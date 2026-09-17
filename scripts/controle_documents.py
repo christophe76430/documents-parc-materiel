@@ -1,9 +1,7 @@
 import os
-import re
-import glob
 import json
 import urllib.request
-from datetime import date
+from datetime import date, datetime
 
 BREVO_API_KEY = os.environ["BREVO_API_KEY"]
 
@@ -13,80 +11,55 @@ EMAIL_EXPEDITEUR = "christophe.dellacasa@gmail.com"
 aujourd_hui = date.today()
 
 print(f"Date du contrôle : {aujourd_hui}")
-print("Recherche des dates de vérification...")
+print("Lecture du fichier dates_vgp.json...")
 
-# Recherche dans tous les fichiers HTML du dépôt
-fichiers = glob.glob("**/*.html", recursive=True)
+with open("dates_vgp.json", "r", encoding="utf-8") as f:
+    dates = json.load(f)
 
-print(f"{len(fichiers)} fichier(s) HTML trouvé(s).")
+print(f"{len(dates)} matériels enregistrés.")
 
-for fichier in fichiers:
+for machine, date_str in dates.items():
 
-    # Ignore les fichiers situés dans .github
-    if fichier.startswith(".github/"):
+    if not date_str:
+        print(f"{machine} : aucune date renseignée")
         continue
-
-    with open(fichier, "r", encoding="utf-8") as f:
-        contenu = f.read()
-
-    # Recherche une date précédée de "Prochaine vérification"
-    correspondances = re.findall(
-        r"Prochaine vérification[^0-9]{0,150}(\d{2}/\d{2}/\d{4})",
-        contenu,
-        re.IGNORECASE
-    )
-
-    if not correspondances:
-        print(f"Aucune date trouvée dans : {fichier}")
-        continue
-
-    date_str = correspondances[0]
 
     try:
-        jour, mois, annee = map(int, date_str.split("/"))
-        date_expiration = date(annee, mois, jour)
+        date_expiration = datetime.strptime(date_str, "%d/%m/%Y").date()
     except ValueError:
-        print(f"Date invalide dans : {fichier}")
+        print(f"{machine} : date invalide ({date_str})")
         continue
 
     jours_restants = (date_expiration - aujourd_hui).days
 
     print(
-        f"{fichier} → échéance {date_str} → "
-        f"{jours_restants} jour(s) restant(s)"
-    )
-
-    # Envoi uniquement à J-30, J-7 et le jour de l'échéance
-    if jours_restants not in (30, 7, 0):
-        continue
-
-    nom_machine = (
-        os.path.basename(fichier)
-        .replace(".html", "")
-        .replace("-", " ")
-        .upper()
+        f"{machine} : échéance {date_str} → "
+        f"{jours_restants} jour(s)"
     )
 
     if jours_restants == 30:
-        sujet = f"⚠️ VGP dans 30 jours - {nom_machine}"
+        sujet = f"⚠️ VGP dans 30 jours - {machine.upper()}"
         message = (
-            f"La vérification périodique de {nom_machine} "
+            f"La vérification périodique de {machine.upper()} "
             f"arrive à échéance dans 30 jours ({date_str})."
         )
 
     elif jours_restants == 7:
-        sujet = f"⚠️ VGP dans 7 jours - {nom_machine}"
+        sujet = f"⚠️ VGP dans 7 jours - {machine.upper()}"
         message = (
-            f"La vérification périodique de {nom_machine} "
+            f"La vérification périodique de {machine.upper()} "
             f"arrive à échéance dans 7 jours ({date_str})."
         )
 
-    else:
-        sujet = f"🚨 VGP arrivée à échéance - {nom_machine}"
+    elif jours_restants == 0:
+        sujet = f"🚨 VGP aujourd'hui - {machine.upper()}"
         message = (
-            f"La vérification périodique de {nom_machine} "
+            f"La vérification périodique de {machine.upper()} "
             f"arrive à échéance aujourd'hui ({date_str})."
         )
+
+    else:
+        continue
 
     donnees = {
         "sender": {
@@ -116,8 +89,8 @@ for fichier in fichiers:
     try:
         with urllib.request.urlopen(requete) as reponse:
             print(
-                f"✅ Email envoyé pour {nom_machine} "
-                f"(réponse Brevo : {reponse.status})"
+                f"✅ Email envoyé pour {machine.upper()} "
+                f"(Brevo : {reponse.status})"
             )
     except Exception as erreur:
-        print(f"❌ Erreur Brevo pour {nom_machine} : {erreur}")
+        print(f"❌ Erreur Brevo pour {machine.upper()} : {erreur}")
