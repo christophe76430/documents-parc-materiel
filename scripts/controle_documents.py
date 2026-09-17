@@ -37,6 +37,8 @@ for machine, date_str in dates.items():
         f"{jours_restants} jour(s)"
     )
 
+    # Déclenchement de l'alerte :
+    # J-30, J-7, jour J, et chaque jour après expiration
     if jours_restants == 30:
         sujet = f"⚠️ VGP dans 30 jours - {machine.upper()}"
         message = (
@@ -56,6 +58,15 @@ for machine, date_str in dates.items():
         message = (
             f"La vérification périodique de {machine.upper()} "
             f"arrive à échéance aujourd'hui ({date_str})."
+        )
+
+    elif jours_restants < 0:
+        sujet = f"🚨 VGP EXPIRÉE - {machine.upper()}"
+        message = (
+            f"ATTENTION : la vérification périodique de "
+            f"{machine.upper()} est expirée depuis "
+            f"{abs(jours_restants)} jour(s). "
+            f"Date d'échéance : {date_str}."
         )
 
     else:
