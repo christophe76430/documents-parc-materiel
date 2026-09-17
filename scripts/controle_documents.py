@@ -12,18 +12,32 @@ EMAIL_EXPEDITEUR = "christophe.dellacasa@gmail.com"
 
 aujourd_hui = date.today()
 
-# Cherche les dates de prochaine vérification dans les pages HTML
-for fichier in glob.glob("*.html"):
+print(f"Date du contrôle : {aujourd_hui}")
+print("Recherche des dates de vérification...")
+
+# Recherche dans tous les fichiers HTML du dépôt
+fichiers = glob.glob("**/*.html", recursive=True)
+
+print(f"{len(fichiers)} fichier(s) HTML trouvé(s).")
+
+for fichier in fichiers:
+
+    # Ignore les fichiers situés dans .github
+    if fichier.startswith(".github/"):
+        continue
+
     with open(fichier, "r", encoding="utf-8") as f:
         contenu = f.read()
 
-    # Recherche une date au format JJ/MM/AAAA
+    # Recherche une date précédée de "Prochaine vérification"
     correspondances = re.findall(
-        r"(?:Prochaine vérification|prochaine vérification)[^0-9]{0,100}(\d{2}/\d{2}/\d{4})",
-        contenu
+        r"Prochaine vérification[^0-9]{0,150}(\d{2}/\d{2}/\d{4})",
+        contenu,
+        re.IGNORECASE
     )
 
     if not correspondances:
+        print(f"Aucune date trouvée dans : {fichier}")
         continue
 
     date_str = correspondances[0]
@@ -32,26 +46,47 @@ for fichier in glob.glob("*.html"):
         jour, mois, annee = map(int, date_str.split("/"))
         date_expiration = date(annee, mois, jour)
     except ValueError:
+        print(f"Date invalide dans : {fichier}")
         continue
 
     jours_restants = (date_expiration - aujourd_hui).days
 
+    print(
+        f"{fichier} → échéance {date_str} → "
+        f"{jours_restants} jour(s) restant(s)"
+    )
+
+    # Envoi uniquement à J-30, J-7 et le jour de l'échéance
     if jours_restants not in (30, 7, 0):
         continue
 
-    nom_machine = fichier.replace(".html", "").replace("-", " ").upper()
+    nom_machine = (
+        os.path.basename(fichier)
+        .replace(".html", "")
+        .replace("-", " ")
+        .upper()
+    )
 
     if jours_restants == 30:
         sujet = f"⚠️ VGP dans 30 jours - {nom_machine}"
-        message = f"La vérification périodique de {nom_machine} arrive à échéance dans 30 jours ({date_str})."
+        message = (
+            f"La vérification périodique de {nom_machine} "
+            f"arrive à échéance dans 30 jours ({date_str})."
+        )
 
     elif jours_restants == 7:
         sujet = f"⚠️ VGP dans 7 jours - {nom_machine}"
-        message = f"La vérification périodique de {nom_machine} arrive à échéance dans 7 jours ({date_str})."
+        message = (
+            f"La vérification périodique de {nom_machine} "
+            f"arrive à échéance dans 7 jours ({date_str})."
+        )
 
     else:
         sujet = f"🚨 VGP arrivée à échéance - {nom_machine}"
-        message = f"La vérification périodique de {nom_machine} arrive à échéance aujourd'hui ({date_str})."
+        message = (
+            f"La vérification périodique de {nom_machine} "
+            f"arrive à échéance aujourd'hui ({date_str})."
+        )
 
     donnees = {
         "sender": {
@@ -80,6 +115,9 @@ for fichier in glob.glob("*.html"):
 
     try:
         with urllib.request.urlopen(requete) as reponse:
-            print(f"Email envoyé pour {nom_machine} : {reponse.status}")
+            print(
+                f"✅ Email envoyé pour {nom_machine} "
+                f"(réponse Brevo : {reponse.status})"
+            )
     except Exception as erreur:
-        print(f"Erreur pour {nom_machine} : {erreur}")
+        print(f"❌ Erreur Brevo pour {nom_machine} : {erreur}")
