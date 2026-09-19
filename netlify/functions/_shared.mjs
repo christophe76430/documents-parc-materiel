@@ -46,8 +46,8 @@ export function parseDate(s){
   const t=String(s||'').replace(/_/g,' ').replace(/\s+/g,' ');
   let m=t.match(/\b(\d{2})[-./ ](\d{2})[-./ ](\d{4})\b/); if(m)return new Date(+m[3],+m[2]-1,+m[1]);
   m=t.match(/\b(\d{4})[-./](\d{2})[-./](\d{2})\b/); if(m)return new Date(+m[1],+m[2]-1,+m[3]);
-  const months={janvier:0,février:1,mars:2,avril:3,mai:4,juin:5,juillet:6,août:7,septembre:8,octobre:9,novembre:10,décembre:11};
-  m=t.toLowerCase().match(/\b(\d{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+(\d{4})\b/); if(m)return new Date(+m[3],months[m[2]],+m[1]);
+  const months={janvier:0,janv:0,février:1,fevr:1,févr:1,fevrier:1,févr:1,mars:2,avril:3,avr:3,mai:4,juin:5,juillet:6,juil:6,août:7,aout:7,septembre:8,sept:8,sept:8,octobre:9,oct:9,novembre:10,nov:10,décembre:11,decembre:11,déc:11,dec:11};
+  m=t.toLowerCase().match(/\b(\d{1,2})\s+(janvier|janv|février|fevr|févr|fevrier|mars|avril|avr|mai|juin|juillet|juil|août|aout|septembre|sept|octobre|oct|novembre|nov|décembre|decembre|déc|dec)\s+(\d{4})\b/); if(m)return new Date(+m[3],months[m[2]],+m[1]);
   return null;
 }
 export function alertState(expiry,type){
