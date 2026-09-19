@@ -1,17 +1,17 @@
 [build]
-  publish = "."
-
-[functions]
-  directory = "netlify/functions"
+  functions = "netlify/functions"
 
 [[redirects]]
   from = "/machine/:id"
   to = "/.netlify/functions/machine?id=:id"
   status = 200
-  force = true
 
 [[redirects]]
   from = "/document/:id/:name"
   to = "/.netlify/functions/document?id=:id&name=:name"
   status = 200
-  force = true
+
+[[redirects]]
+  from = "/admin"
+  to = "/.netlify/functions/admin"
+  status = 200

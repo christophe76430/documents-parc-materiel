@@ -42,6 +42,12 @@ function validCookie(cookie, id, secret) {
   return safeEqual(sig, sign(`${mid}.${exp}`, secret));
 }
 
+function docsHtml(id, machine) {
+  return `<ul>${machine.documents.map(([file,label]) =>
+    `<li><a href="/document/${id}/${encodeURIComponent(file)}">${label}</a></li>`
+  ).join("")}</ul>`;
+}
+
 function loginPage(machine, message = "") {
   return new Response(`<!doctype html><html lang="fr"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -55,6 +61,17 @@ ${message ? `<p style="color:#b00020">${message}</p>` : ""}
   {headers: {"content-type":"text/html;charset=UTF-8"}});
 }
 
+function machinePage(machine) {
+  return `<!doctype html><html lang="fr"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${machine.name}</title>
+<style>body{font-family:Arial;max-width:650px;margin:40px auto;padding:20px}li{margin:15px 0}</style>
+<h1>🏗️ ${machine.name}</h1><h2>Documents</h2>
+${machine.documents.length ? docsHtml(Object.keys(MACHINES).find(k => MACHINES[k] === machine), machine) :
+  `<p>Aucun document de test n'est encore déposé pour ce matériel.</p>`}
+<p>Accès valable 8 heures sur cet équipement.</p>`;
+}
+
 export default async (req) => {
   const secret = process.env.PARC_PASSWORD;
   const url = new URL(req.url);
@@ -66,16 +83,7 @@ export default async (req) => {
 
   if (req.method === "GET") {
     if (validCookie(req.headers.get("cookie"), id, secret)) {
-      return new Response(`<!doctype html><html lang="fr"><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${machine.name}</title>
-<style>body{font-family:Arial;max-width:650px;margin:40px auto;padding:20px}li{margin:15px 0}</style>
-<h1>🏗️ ${machine.name}</h1><h2>Documents</h2>
-${machine.documents.length
-  ? `<ul>${machine.documents.map(([file,label]) => `<li><a href="/document/${id}/${encodeURIComponent(file)}">${label}</a></li>`).join("")}</ul>`
-  : `<p>Aucun document de test n'est encore déposé pour ce matériel.</p>`}
-<p>Accès valable 8 heures sur cet équipement.</p>`,
-        {headers: {"content-type":"text/html;charset=UTF-8"}});
+      return new Response(machinePage(machine), {headers: {"content-type":"text/html;charset=UTF-8"}});
     }
     return loginPage(machine);
   }
@@ -87,17 +95,10 @@ ${machine.documents.length
   if (!safeEqual(password, secret)) return loginPage(machine, "Mot de passe incorrect.");
 
   const cookie = cookieFor(id, secret);
-  return new Response(`<!doctype html><html lang="fr"><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${machine.name}</title>
-<style>body{font-family:Arial;max-width:650px;margin:40px auto;padding:20px}li{margin:15px 0}</style>
-<h1>🏗️ ${machine.name}</h1><h2>Documents</h2>
-${machine.documents.length
-  ? `<ul>${machine.documents.map(([file,label]) => `<li><a href="/document/${id}/${encodeURIComponent(file)}">${label}</a></li>`).join("")}</ul>`
-  : `<p>Aucun document de test n'est encore déposé pour ce matériel.</p>`}
-<p>Accès valable 8 heures sur cet équipement.</p>`,
-    {headers: {
+  return new Response(machinePage(machine), {
+    headers: {
       "content-type":"text/html;charset=UTF-8",
       "set-cookie":`PARC_AUTH=${cookie}; HttpOnly; Secure; SameSite=Strict; Max-Age=28800; Path=/`
-    }});
+    }
+  });
 };
