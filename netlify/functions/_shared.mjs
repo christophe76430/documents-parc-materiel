@@ -20,7 +20,10 @@ export const TYPES={
   shunt:{label:'Barre de shunt',alertDays:30},
   agrement:{label:'Agrément',alertMonths:3},
   carte:{label:'Carte grise'},
-  barreRouge:{label:'Barre rouge'}
+  barreRouge:{label:'Barré rouge'},
+  divers:{label:'Divers'},
+  doc:{label:'Doc'},
+  devis:{label:'Devis'}
 };
 export function expectedTypes(m){
   if(!m) return [];
@@ -48,7 +51,8 @@ export function parseDate(s){
   return null;
 }
 export function alertState(expiry,type){
-  if(!expiry||!type||type==='carte'||type==='barreRouge') return {state:'none',text:expiry?'Valide':'Date non renseignée'};
+  if(['carte','barreRouge','divers','doc','devis'].includes(type)) return {state:'none',text:''};
+  if(!expiry||!type) return {state:'none',text:'Date non renseignée'};
   const d=new Date(expiry+'T23:59:59'); const now=new Date(); let alertAt;
   if(type==='agrement'){alertAt=new Date(d);alertAt.setMonth(alertAt.getMonth()-3)} else {alertAt=new Date(d);alertAt.setDate(alertAt.getDate()-30)}
   if(now>d)return {state:'bad',text:'EXPIRÉ'};
