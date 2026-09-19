@@ -1,0 +1,17 @@
+[build]
+  publish = "."
+
+[functions]
+  directory = "netlify/functions"
+
+[[redirects]]
+  from = "/machine/T01"
+  to = "/.netlify/functions/machine?id=T01"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/document/T01/:name"
+  to = "/.netlify/functions/document?id=T01&name=:name"
+  status = 200
+  force = true
