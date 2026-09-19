@@ -33,7 +33,12 @@ export function expectedTypes(m){
   if(['RRA319','RRA034','RRA035','RRA318','RRAT064','RRAT089'].includes(m.id)) return ['agrement'];
   return ['assurance','vgp','shunt'];
 }
-export function store(){ return getStore({name:STORE,region:REGION}); }
+export function store(){
+  return getStore({
+    name: STORE,
+    consistency: 'strong'
+  });
+}
 export function b64url(buf){return Buffer.from(buf).toString('base64url');}
 export function sign(id,exp){const secret=process.env.PARC_PASSWORD||'';return b64url(crypto.createHmac('sha256',secret).update(`${id}.${exp}`).digest())}
 export function makeToken(id){const exp=Date.now()+TTL;return `${id}.${exp}.${sign(id,exp)}`}
