@@ -1,20 +1,2 @@
 [build]
   functions = "netlify/functions"
-
-[[redirects]]
-  from = "/machine/T01"
-  to = "/.netlify/functions/machine?id=T01"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/document/*"
-  to = "/.netlify/functions/document"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/admin"
-  to = "/.netlify/functions/admin"
-  status = 200
-  force = true
