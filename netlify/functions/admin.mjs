@@ -52,7 +52,7 @@ function formPage(){
    <label>Matériel</label><select name="id">${Object.values(MACHINES).map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select>
    <label>Type</label><select name="type">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select>
    <div id="expiry-wrap"><label>Date d'expiration</label><input type="date" name="expiry"></div>
-   <label>PDF</label><input type="file" name="file" accept="application/pdf,.pdf" required>
+   <label>PDF / JPG /JPEG / PNG</label><input type="file" name="file" accept="application/pdf,.pdf,image/jpeg,.jpg,.jpeg,image/png,.png" required> 
    <button>Charger le document</button>
   </form>
  </div>
@@ -60,8 +60,8 @@ function formPage(){
   <h2>Import de tout le parc</h2>
   <p class="muted">Sélectionne le dossier <strong>PARCMAT</strong> de ton ordinateur. Les sous-dossiers sont analysés automatiquement. Les archives et fichiers inutiles sont ignorés.</p>
   <label>Mot de passe administrateur</label><input id="bulk-password" type="password" autocomplete="off">
-  <label>Dossier PARCMAT</label><input id="bulk-files" type="file" webkitdirectory directory multiple accept="application/pdf,.pdf">
-  <button type="button" id="bulk-start">Importer tout le parc</button>
+ <label>Dossier PARCMAT</label><input id="bulk-files" type="file" webkitdirectory directory multiple accept="application/pdf,.pdf,image/jpeg,.jpg,.jpeg,image/png,.png">
+   <button type="button" id="bulk-start">Importer tout le parc</button>
   <div id="bulk-status" class="muted" style="margin-top:12px"></div>
   <pre id="bulk-log" style="max-height:320px;overflow:auto;white-space:pre-wrap"></pre>
  </div>
