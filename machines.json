@@ -1,0 +1,13 @@
+{
+  "camions": [
+    ["T01","T01 - EW-610-MD - Man TGS 35.420 8x4 Grue"],["T04","T04 - EB-837-AD - Man TGS 28.440"],["T08","T08 - BE-763-WR - Man TGS 35.400"],["T09","T09 - DY-847-PK - Man TGS 35.440"],["T21","T21 - FJ-210-WY - VOLVO FM (4)"],["T22","T22 - FT-812-DM - VOLVO FM 6x4"],["T23","T23 - GF-353-RM - MERCEDES AROCS"],["T24","T24 - GP-257-GM Mercedes"],
+    ["REM05","REM05 - EW-638-MH - Benne 3 essieux"],["REM06","REM06 - CB-024-NG - Plateau Extensible"],["REM08","REM08 - GQ-842-HQ"],["ANSEMS","REMORQUE ANSSEMS N GK-005-XL"]
+  ],
+  "pelles": [
+    ["P03","Pelle 3 - Pelle à chenilles VOLVO - série 221447"],["P10","Pelle 10 - Pelle à pneus DOOSAN - série 50932"],["P11","Pelle 11 - CASE CX145 CSR - série 1592"],["P12","Pelle 12 - DOOSAN DX165W-5 - série 1225"],["P16","Pelle 16 - RR ACX 160 WRR - série A1P13007"],["P17","Pelle 17 - RR ACX 160 WRR - série A1P13012"],["P18","Pelle 18 - RR ACX 160 WRR - série A1P13013"],["P19","Pelle 19 - RR ACX 105 RR - série M1P160009"],["P20","Pelle 20 - RR ACX 23 RR - série A2P180013"],["P21","Pelle 21 - RR ACX 23 RR - série A2P190038"],["P23","Pelle 23 - Doosan à chenilles - série 5813"],["P24","Pelle 24 - RR ATLAS 1404MZ - série 243Z301276"],["P25","Pelle 25 - RR ATLAS 1404MZ - série 243Z301279"],
+    ["RRA319","Remorque RR ACX - AGT 24 319"],["RRA034","Remorque RR ACX - AGT 24 034"],["RRA035","Remorque RR ACX - AGT 24 035"],["RRA318","Remorque RR ACX - AGT 24 318"],["RRAT064","Remorque RR ATLAS - AGT 26 064"],["RRAT089","Remorque RR ATLAS - AGT 26 089"]
+  ],
+  "vehicules": [
+    ["DL884QM","DL-884-QM - MERCEDES Sprinter 3T5 benne"],["DT494VJ","DT-494-VJ - CITROEN C3"],["DV098KA","DV-098-KA - CITROEN Jumpy"],["EQ811AX","EQ-811-AX - CITROEN Berlingo"],["FE191ZT","FE-191-ZT - RENAULT Clio"],["FE798ZS","FE-798-ZS - RENAULT Clio"],["FG520PX","FG-520-PX - RENAULT Kangoo"],["FH458MR","FH-458-MR - RENAULT Clio"],["FL238XW","FL-238-XW - RENAULT Kangoo"],["FL865XW","FL-865-XW - RENAULT Kangoo"],["FM019PV","FM-019-PV - RENAULT Kangoo long cargo"],["FV628AN","FV-628-AN - RENAULT Kangoo"],["FV643AN","FV-643-AN - RENAULT Kangoo"],["FZ856BY","FZ-856-BY - SEAT"]
+  ]
+}
