@@ -34,18 +34,81 @@ const status = document.getElementById('bulk-status'), log = document.getElement
 const start = document.getElementById('bulk-start'), filesInput = document.getElementById('bulk-files');
 if(start) start.addEventListener('click', async()=>{
   const files=[...filesInput.files], password=document.getElementById('bulk-password').value;
-  if(!password){alert('Entre le mot de passe administrateur.');return}
-  if(!files.length){alert('Sélectionne le dossier PARCMAT.');return}
-  start.disabled=true; log.textContent=''; let ok=0,skip=0,fail=0;
+
+  if(!password){
+    alert('Entre le mot de passe administrateur.');
+    return;
+  }
+
+  if(!files.length){
+    alert('Sélectionne le dossier PARCMAT.');
+    return;
+  }
+
+  start.disabled=true;
+  log.textContent='';
+  status.textContent='Démarrage de l’import de '+files.length+' fichiers…';
+
+  let ok=0,skip=0,fail=0;
+
   for(let i=0;i<files.length;i++){
     const f=files[i], path=f.webkitRelativePath||f.name;
-    if(shouldSkip(path)){skip++;continue}
+
+    status.textContent='Préparation : '+(i+1)+'/'+files.length+' — '+path;
+
+    if(shouldSkip(path)){
+      skip++;
+      log.textContent+='IGNORÉ : '+path+'\n';
+      continue;
+    }
+
     const id=machineIdFromPath(path), type=typeFromPath(path);
-    if(!id){skip++;log.textContent+='IGNORÉ (matériel non reconnu) : '+path+'\n';continue}
-    if(type==='agrement'&&!AGREMENT_IDS.has(id)){skip++;log.textContent+='IGNORÉ (agrément non suivi) : '+path+'\n';continue}
-    const fd=new FormData(); fd.append('password',password); fd.append('id',id); fd.append('type',type); fd.append('file',f,f.name); fd.append('bulk','1');
-    try{const r=await fetch('/admin',{method:'POST',body:fd}); if(r.ok){ok++;log.textContent+='OK : '+path+'\n';}else{fail++;log.textContent+='ERREUR HTTP '+r.status+' : '+path+'\n';}}catch(e){fail++;log.textContent+='ERREUR réseau : '+path+'\n';}
-    status.textContent='Import : '+(i+1)+'/'+files.length+' — '+ok+' chargés, '+skip+' ignorés, '+fail+' erreurs';
+
+    if(!id){
+      skip++;
+      log.textContent+='IGNORÉ (matériel non reconnu) : '+path+'\n';
+      continue;
+    }
+
+    if(type==='agrement'&&!AGREMENT_IDS.has(id)){
+      skip++;
+      log.textContent+='IGNORÉ (agrément non suivi) : '+path+'\n';
+      continue;
+    }
+
+    const fd=new FormData();
+    fd.append('password',password);
+    fd.append('id',id);
+    fd.append('type',type);
+    fd.append('file',f,f.name);
+    fd.append('bulk','1');
+
+    status.textContent='Envoi '+(i+1)+'/'+files.length+' : '+path;
+
+    try{
+      const r=await fetch('/admin',{
+        method:'POST',
+        body:fd
+      });
+
+      if(r.ok){
+        ok++;
+        log.textContent+='OK : '+path+'\n';
+      }else{
+        fail++;
+        log.textContent+='ERREUR HTTP '+r.status+' : '+path+'\n';
+      }
+    }catch(e){
+      fail++;
+      log.textContent+='ERREUR réseau : '+path+'\n';
+    }
+
+    status.textContent='Import : '+(i+1)+'/'+files.length+
+      ' — '+ok+' chargés, '+skip+' ignorés, '+fail+' erreurs';
+
+    log.scrollTop=log.scrollHeight;
   }
-  status.textContent='Terminé : '+ok+' chargés, '+skip+' ignorés, '+fail+' erreurs.'; start.disabled=false;
+
+  status.textContent='Terminé : '+ok+' chargés, '+skip+' ignorés, '+fail+' erreurs.';
+  start.disabled=false;
 });
