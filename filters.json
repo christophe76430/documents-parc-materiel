@@ -1,0 +1,716 @@
+{
+  "T04": {
+    "source_label": "MAN TGS 28.440 — EB-837-AD",
+    "source_note": "Moteur MAN D2066/D2676 — 10/07-",
+    "filters": [
+      [
+        "Huile",
+        "CH086 ou CH199"
+      ],
+      [
+        "Carburant primaire",
+        "CG1030H (option) / CG304 (pompe de gavage) / FG250"
+      ],
+      [
+        "Carburant",
+        "CG206"
+      ],
+      [
+        "Air",
+        "DA2665R"
+      ],
+      [
+        "Air secondaire",
+        "DA2730"
+      ],
+      [
+        "Cabine",
+        "DA5199 (pollen) ou DA5199C (charbon actif)"
+      ],
+      [
+        "Dessiccateur",
+        "DA2019G — coalescente, protection renforcée"
+      ],
+      [
+        "Direction",
+        "CH026 / DH692 — option spéciale ZF Servocom RA"
+      ],
+      [
+        "Boîte de vitesses",
+        "DH6119 — boîte ZF"
+      ],
+      [
+        "AdBlue",
+        "CGB100 / CGB103 — Euro 5/6/EEV, primaire"
+      ]
+    ]
+  },
+  "T08": {
+    "source_label": "MAN TGS 35.400 — BE-763-WR",
+    "source_note": "Moteur MAN D2066 — 17/12/2010",
+    "filters": [
+      [
+        "Huile",
+        "CH086"
+      ],
+      [
+        "Carburant primaire",
+        "CG1030H (option) / CG304 (pompe de gavage)"
+      ],
+      [
+        "Carburant",
+        "CG206"
+      ],
+      [
+        "Air",
+        "DA2665R"
+      ],
+      [
+        "Air secondaire",
+        "DA2730"
+      ],
+      [
+        "Cabine",
+        "DA5199 (pollen) ou DA5199C (charbon actif)"
+      ],
+      [
+        "Dessiccateur",
+        "DA2019G — coalescente, protection renforcée"
+      ],
+      [
+        "Direction",
+        "CH026 / DH692 — option spéciale ZF Servocom RA"
+      ],
+      [
+        "Boîte de vitesses",
+        "DH6119 — boîte ZF"
+      ],
+      [
+        "AdBlue",
+        "CGB100 / CGB103 — Euro 5/6/EEV, primaire"
+      ]
+    ]
+  },
+  "T09": {
+    "source_label": "MAN TGS 35.440 — DY-847-PK",
+    "source_note": "Moteur MAN D2066/D2676 — 10/07- / Euro 6 à partir de 09/12 selon la fiche",
+    "filters": [
+      [
+        "Huile",
+        "CH199"
+      ],
+      [
+        "Carburant primaire",
+        "CG1030H (option) / CG304 (pompe de gavage) / FG250"
+      ],
+      [
+        "Carburant",
+        "CG206"
+      ],
+      [
+        "Air",
+        "DA2665R"
+      ],
+      [
+        "Air secondaire",
+        "DA2730"
+      ],
+      [
+        "Cabine",
+        "DA5199 (pollen) ou DA5199C (charbon actif)"
+      ],
+      [
+        "Dessiccateur",
+        "DA2019G — coalescente, protection renforcée"
+      ],
+      [
+        "Direction",
+        "CH026 / DH692 — option spéciale ZF Servocom RA"
+      ],
+      [
+        "Boîte de vitesses",
+        "DH6119 — boîte ZF"
+      ],
+      [
+        "AdBlue",
+        "CGB100 / CGB103 — Euro 5/6/EEV, primaire"
+      ]
+    ]
+  },
+  "T22": {
+    "source_label": "VOLVO FMX II 430 — FT-812-DM",
+    "source_note": "Moteur Volvo D11K Euro 6 — 02/10/2020",
+    "filters": [
+      [
+        "Huile",
+        "2 × FH301 ou 2 × FH086 ou huile by-pass FH425"
+      ],
+      [
+        "Carburant primaire",
+        "FG065"
+      ],
+      [
+        "Carburant",
+        "FG754 ou FG186"
+      ],
+      [
+        "Air",
+        "DA3633"
+      ],
+      [
+        "Air secondaire",
+        "DA3713"
+      ],
+      [
+        "Cabine",
+        "DA5457 + DA5458"
+      ],
+      [
+        "Eau",
+        "DW096"
+      ],
+      [
+        "Dessiccateur",
+        "DA2019S"
+      ],
+      [
+        "Direction",
+        "DH692 — option ZF Servocom RAS-EC / CH026"
+      ],
+      [
+        "Boîte de vitesses",
+        "CH721CKIT — I-Shift 2"
+      ],
+      [
+        "AdBlue",
+        "CGB106"
+      ]
+    ]
+  },
+  "T23": {
+    "source_label": "MERCEDES Arocs 3243 — GF-353-RM",
+    "source_note": "Fiche source avec observation « A Vérifier »",
+    "filters": [
+      [
+        "Huile",
+        "CH246"
+      ],
+      [
+        "Air",
+        "DA3663 ou DA3563"
+      ],
+      [
+        "Cabine",
+        "DA5676C (charbon actif) ou DA5676 (pollen) — jusqu'à 08/2015 ; DA5119 ou autre selon la fiche"
+      ]
+    ],
+    "note": "La fiche source indique « A Vérifier » et ne fournit pas une liste complète de filtration pour ce véhicule."
+  },
+  "P03": {
+    "source_label": "VOLVO EC 220 D",
+    "source_note": "Volvo D6H Tier 4 — 2012-",
+    "filters": [
+      [
+        "Huile",
+        "FH263"
+      ],
+      [
+        "Carburant primaire",
+        "FG123"
+      ],
+      [
+        "Carburant",
+        "FG997"
+      ],
+      [
+        "Air",
+        "DA1968"
+      ],
+      [
+        "Air secondaire",
+        "DA1969"
+      ],
+      [
+        "Cabine",
+        "DA5148 + DA5619"
+      ],
+      [
+        "Hydraulique",
+        "DH656"
+      ],
+      [
+        "Hydraulique BRH",
+        "DH8999"
+      ],
+      [
+        "Hydraulique pilote",
+        "DH4187A"
+      ],
+      [
+        "Hydraulique retour",
+        "DH948"
+      ],
+      [
+        "Hydraulique aspiration",
+        "DH9336"
+      ],
+      [
+        "Reniflard réservoir",
+        "RE1016 — carburant"
+      ],
+      [
+        "Reniflard",
+        "RE1021 — hydraulique"
+      ]
+    ]
+  },
+  "P10": {
+    "source_label": "DOOSAN DX 160 W",
+    "source_note": "Moteur Doosan DL06 — 2007-",
+    "filters": [
+      [
+        "Huile",
+        "FH9027"
+      ],
+      [
+        "Carburant primaire",
+        "FG122"
+      ],
+      [
+        "Carburant",
+        "FG032"
+      ],
+      [
+        "Air",
+        "DA2674"
+      ],
+      [
+        "Air secondaire",
+        "DA2675"
+      ],
+      [
+        "Cabine",
+        "DA5263"
+      ],
+      [
+        "Hydraulique",
+        "DH383"
+      ],
+      [
+        "Hydraulique pilote",
+        "DH4187"
+      ],
+      [
+        "Hydraulique retour",
+        "DH135B"
+      ],
+      [
+        "Hydraulique aspiration",
+        "DH885 — réservoir"
+      ]
+    ]
+  },
+  "P11": {
+    "source_label": "CASE CX 145 C SR",
+    "source_note": "Moteur Isuzu Tier 4 — 08/12-",
+    "filters": [
+      [
+        "Huile",
+        "FH701B"
+      ],
+      [
+        "Carburant primaire",
+        "CG073"
+      ],
+      [
+        "Carburant",
+        "CG071"
+      ],
+      [
+        "Air",
+        "DA2014"
+      ],
+      [
+        "Air secondaire",
+        "DA2015"
+      ],
+      [
+        "Cabine",
+        "DA5560 / DA5665"
+      ],
+      [
+        "Hydraulique",
+        "DH233A — réservoir"
+      ],
+      [
+        "Hydraulique pilote",
+        "DH867B"
+      ],
+      [
+        "Hydraulique aspiration",
+        "DH9380 — réservoir"
+      ],
+      [
+        "Reniflard",
+        "RE1021 — hydraulique"
+      ]
+    ]
+  },
+  "P12": {
+    "source_label": "DOOSAN DX 165 W-5",
+    "source_note": "Moteur Perkins 1204F-E44TAN — modèle à vérifier ; observation « A Vérifier »",
+    "filters": [
+      [
+        "Huile",
+        "FH900"
+      ],
+      [
+        "Carburant primaire",
+        "CG743"
+      ],
+      [
+        "Carburant",
+        "FG174"
+      ],
+      [
+        "Air",
+        "DA1062"
+      ],
+      [
+        "Air secondaire",
+        "DA1063"
+      ],
+      [
+        "Cabine",
+        "DA5438 + DA5437"
+      ],
+      [
+        "Hydraulique freins",
+        "DH9080"
+      ],
+      [
+        "Hydraulique pilote",
+        "DH9195"
+      ],
+      [
+        "Hydraulique retour",
+        "DH9272"
+      ],
+      [
+        "Hydraulique aspiration",
+        "DH885 — réservoir"
+      ],
+      [
+        "Reniflard moteur",
+        "RE1002"
+      ],
+      [
+        "Reniflard hydraulique",
+        "RE1048"
+      ]
+    ]
+  },
+  "P16": {
+    "source_label": "ACX160W RR",
+    "source_note": "Série indiquée sur la fiche : 1225",
+    "filters": [
+      [
+        "Huile",
+        "FH9027"
+      ],
+      [
+        "Carburant primaire",
+        "FG122"
+      ],
+      [
+        "Carburant",
+        "FG032"
+      ],
+      [
+        "Air",
+        "DA2674"
+      ],
+      [
+        "Air secondaire",
+        "DA2675"
+      ]
+    ]
+  },
+  "P17": {
+    "source_label": "ACX160W RR",
+    "source_note": "Série indiquée sur la fiche : 13012",
+    "filters": [
+      [
+        "Huile",
+        "FH9027"
+      ],
+      [
+        "Carburant primaire",
+        "FG122"
+      ],
+      [
+        "Carburant",
+        "FG032"
+      ],
+      [
+        "Air",
+        "DA2674"
+      ],
+      [
+        "Air secondaire",
+        "DA2675"
+      ]
+    ]
+  },
+  "P18": {
+    "source_label": "ACX160W RR",
+    "source_note": "Série indiquée sur la fiche : 13013",
+    "filters": [
+      [
+        "Huile",
+        "FH9027"
+      ],
+      [
+        "Carburant primaire",
+        "FG122"
+      ],
+      [
+        "Carburant",
+        "FG032"
+      ],
+      [
+        "Air",
+        "DA2674"
+      ],
+      [
+        "Air secondaire",
+        "DA2675"
+      ]
+    ]
+  },
+  "P19": {
+    "source_label": "ACX 10.5 RR",
+    "filters": [
+      [
+        "Huile",
+        "FH828"
+      ],
+      [
+        "Carburant primaire",
+        "FG927"
+      ],
+      [
+        "Carburant",
+        "FG530"
+      ],
+      [
+        "Air",
+        "DA2124"
+      ],
+      [
+        "Air secondaire",
+        "DA2208"
+      ]
+    ]
+  },
+  "P20": {
+    "source_label": "DOOSAN ACX 23 RR",
+    "source_note": "Moteur Doosan DL06P — 2018-",
+    "filters": [
+      [
+        "Huile",
+        "FH9003"
+      ],
+      [
+        "Carburant primaire",
+        "FG355"
+      ],
+      [
+        "Carburant",
+        "FG155"
+      ],
+      [
+        "Air",
+        "DA3474"
+      ],
+      [
+        "Air secondaire",
+        "DA3470"
+      ],
+      [
+        "Cabine",
+        "DA5831 + DA5263"
+      ],
+      [
+        "Hydraulique freins",
+        "DH9272 + DH9080"
+      ],
+      [
+        "Hydraulique pilote",
+        "DH9195"
+      ],
+      [
+        "Hydraulique aspiration",
+        "DH885 — crépine"
+      ]
+    ]
+  },
+  "P21": {
+    "source_label": "DOOSAN ACX 23 RR",
+    "source_note": "Moteur Doosan DL06P — 2018- ; série indiquée : 190038",
+    "filters": [
+      [
+        "Huile",
+        "FH9003"
+      ],
+      [
+        "Carburant primaire",
+        "FG355"
+      ],
+      [
+        "Carburant",
+        "FG155"
+      ],
+      [
+        "Air",
+        "DA3474"
+      ],
+      [
+        "Air secondaire",
+        "DA3470"
+      ],
+      [
+        "Cabine",
+        "DA5263 + DA5831"
+      ],
+      [
+        "Hydraulique freins",
+        "DH9080 + DH9272"
+      ],
+      [
+        "Hydraulique pilote",
+        "DH9195"
+      ],
+      [
+        "Hydraulique aspiration",
+        "DH885 — crépine"
+      ]
+    ]
+  },
+  "P23": {
+    "source_label": "DOOSAN DX 27 Z",
+    "source_note": "Moteur Yanmar 3TNV88-SDB — 2008-",
+    "filters": [
+      [
+        "Huile",
+        "FH324"
+      ],
+      [
+        "Carburant primaire",
+        "DC1006"
+      ],
+      [
+        "Carburant",
+        "FG583"
+      ],
+      [
+        "Air",
+        "DA2255"
+      ],
+      [
+        "Air secondaire",
+        "DA2312"
+      ],
+      [
+        "Hydraulique retour",
+        "DH9805"
+      ],
+      [
+        "Hydraulique aspiration",
+        "DH9545 — crépine"
+      ],
+      [
+        "Reniflard",
+        "RE1048"
+      ]
+    ]
+  },
+  "P24": {
+    "source_label": "ATLAS 1404 MZ",
+    "source_note": "Moteur Deutz TCD4.1 L4 ; fiche marquée « Filtration Manquante ! »",
+    "filters": [
+      [
+        "Huile",
+        "CH042"
+      ],
+      [
+        "Carburant primaire",
+        "FG145"
+      ],
+      [
+        "Carburant",
+        "FG2047B"
+      ],
+      [
+        "Air",
+        "DA3358"
+      ],
+      [
+        "Air secondaire",
+        "DA3359"
+      ],
+      [
+        "Cabine",
+        "DA5810"
+      ],
+      [
+        "Dessiccateur",
+        "DA2019"
+      ],
+      [
+        "Hydraulique",
+        "DH812B"
+      ],
+      [
+        "Hydraulique pilote",
+        "DH9674"
+      ],
+      [
+        "Hydraulique retour",
+        "5650299 → ?"
+      ]
+    ],
+    "note": "La fiche source signale « Filtration Manquante ! » ; la référence du filtre hydraulique retour est indiquée « 5650299->? » et doit être vérifiée.",
+    "adblue": "CGB106"
+  },
+  "P25": {
+    "source_label": "ATLAS 1404 MZ",
+    "source_note": "Moteur Deutz TCD4.1 L4",
+    "filters": [
+      [
+        "Huile",
+        "CH042"
+      ],
+      [
+        "Carburant primaire",
+        "FG145"
+      ],
+      [
+        "Carburant",
+        "FG2047B"
+      ],
+      [
+        "Air",
+        "DA3358"
+      ],
+      [
+        "Air secondaire",
+        "DA3359"
+      ],
+      [
+        "Cabine",
+        "DA5810"
+      ]
+    ]
+  }
+}
