@@ -113,6 +113,22 @@ async function loadItems(id) {
   return items;
 }
 
+function statusDot(state) {
+  if (state === 'ok') {
+    return '<span class="status-dot green" title="Document valide"></span>';
+  }
+
+  if (state === 'warn') {
+    return '<span class="status-dot orange" title="Échéance proche"></span>';
+  }
+
+  if (state === 'bad') {
+    return '<span class="status-dot red" title="Échéance très proche ou dépassée"></span>';
+  }
+
+  return '';
+}
+
 function docs(m, items) {
   const by = {};
 
@@ -121,7 +137,10 @@ function docs(m, items) {
   }
 
   for (const x of items) {
-    if (!by[x.type]) by[x.type] = [];
+    if (!by[x.type]) {
+      by[x.type] = [];
+    }
+
     by[x.type].push(x);
   }
 
@@ -132,7 +151,31 @@ function docs(m, items) {
     )
   ];
 
-  let s = '<h2>Documents</h2>';
+  let s = `
+    <h2>Documents</h2>
+
+    <div class="status-legend">
+      <div class="legend-item">
+        <span class="status-dot green"></span>
+        <span>Document valide</span>
+      </div>
+
+      <div class="legend-item">
+        <span class="status-dot orange"></span>
+        <span>Échéance proche</span>
+      </div>
+
+      <div class="legend-item">
+        <span class="status-dot red"></span>
+        <span>Échéance très proche ou dépassée</span>
+      </div>
+
+      <div class="legend-item">
+        <span class="status-dot gray"></span>
+        <span>Document non chargé</span>
+      </div>
+    </div>
+  `;
 
   for (const t of types) {
     const meta = TYPES[t];
@@ -141,7 +184,12 @@ function docs(m, items) {
     s += `<section><h3>${meta.label}</h3>`;
 
     if (!list.length) {
-      s += '<p class="muted">Document non chargé.</p>';
+      const monitored =
+        !['carte', 'barreRouge', 'divers', 'doc', 'devis'].includes(t);
+
+      s += monitored
+        ? '<p class="muted"><span class="status-dot gray"></span> Document non chargé.</p>'
+        : '<p class="muted">Document non chargé.</p>';
     }
 
     for (const x of list) {
@@ -159,6 +207,7 @@ function docs(m, items) {
 
       s += `
 <div class="doc">
+  ${x.expiry ? statusDot(a.state) : ''}
   <a href="/document/${m.id}/${docType}/${fileName}">
     ${esc(x.label || x.key)}
   </a>
