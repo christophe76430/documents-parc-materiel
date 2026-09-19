@@ -2,8 +2,8 @@
   functions = "netlify/functions"
 
 [[redirects]]
-  from = "/machine/*"
-  to = "/.netlify/functions/machine?id=:splat"
+  from = "/machine/T01"
+  to = "/.netlify/functions/machine?id=T01"
   status = 200
   force = true
 
