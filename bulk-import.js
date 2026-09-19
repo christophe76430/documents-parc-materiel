@@ -29,7 +29,7 @@ const machineIdFromPath = path => {
   for(const [name,id] of Object.entries(MACHINE_PATHS)) if(parts.includes(norm(name))) return id;
   return null;
 };
-const shouldSkip = path => !/\.pdf$/i.test(path) || /(^|\/)(archives?|archive|thumbs\.db)(\/|$)/i.test(path);
+const shouldSkip = path => !/\.(pdf|jpe?g|png)$/i.test(path) || /(^|\/)(archives?|archive|thumbs\.db)(\/|$)/i.test(path);
 const status = document.getElementById('bulk-status'), log = document.getElementById('bulk-log');
 const start = document.getElementById('bulk-start'), filesInput = document.getElementById('bulk-files');
 if(start) start.addEventListener('click', async()=>{
