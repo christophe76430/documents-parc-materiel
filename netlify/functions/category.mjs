@@ -1,9 +1,82 @@
 import machines from '../../machines.json' with {type:'json'};
 import {esc,html} from './_shared.mjs';
+
 export const config={path:'/category/:group'};
+
+const META={
+  camions:{
+    title:'Camions',
+    subtitle:'Poids lourds, bennes, plateaux et remorques',
+    image:'/assets/camions.jpg',
+    cls:'truck',
+    icon:'▣'
+  },
+  pelles:{
+    title:'Matériel rail-route',
+    subtitle:'Pelles rail-route et remorques dédiées aux travaux ferroviaires',
+    image:'/assets/railroute.jpg',
+    cls:'rail',
+    icon:'⚒'
+  },
+  vehicules:{
+    title:'Véhicules',
+    subtitle:'Voitures, utilitaires et véhicules légers',
+    image:'/assets/vehicules.jpg',
+    cls:'vehicles',
+    icon:'▱'
+  }
+};
+
+function splitName(name){
+  const p=name.indexOf(' - ');
+  if(p<0) return {code:name,desc:''};
+  return {code:name.slice(0,p),desc:name.slice(p+3)};
+}
+
 export default async(req,context)=>{
- const group=String(context.params?.group||'').toLowerCase(); const items=machines[group]; if(!items)return html('<h1>Catégorie introuvable</h1>',404);
- const title={camions:'Camions',pelles:'Pelles et remorques',vehicules:'Véhicules'}[group]||group;
- const list=items.map(([id,name])=>`<a class="machine" href="/machine/${id}">${esc(name)}</a>`).join('');
- return html(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><link rel="stylesheet" href="/style.css"></head><body><main><h1>🏗️ ${esc(title)}</h1>${list}<p><a href="/">← Retour</a></p></main></body></html>`);
+  const group=String(context.params?.group||'').toLowerCase();
+  const items=machines[group];
+  const meta=META[group];
+  if(!items||!meta) return html('<h1>Catégorie introuvable</h1>',404);
+
+  const cards=items.map(([id,name])=>{
+    const {code,desc}=splitName(name);
+    const isTrailer=id.startsWith('REM')||id.startsWith('ANSEMS')||id.startsWith('RRA')||id.startsWith('RRAT');
+    return `<a class="fleet-card ${meta.cls}" href="/machine/${encodeURIComponent(id)}">
+      <div class="fleet-icon">${meta.icon}</div>
+      <div class="fleet-info">
+        <div class="fleet-top"><span class="fleet-code">${esc(code)}</span><span class="fleet-kind">${isTrailer?'Remorque':meta.title==='Véhicules'?'Véhicule':meta.title==='Camions'?'Camion':'Engin rail-route'}</span></div>
+        <h2>${esc(desc||name)}</h2>
+        <span class="fleet-link">Voir les documents <span aria-hidden="true">→</span></span>
+      </div>
+    </a>`;
+  }).join('');
+
+  return html(`<!doctype html><html lang="fr"><head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>${esc(meta.title)} — Parc THN</title><link rel="stylesheet" href="/style.css">
+  </head><body class="category-page">
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="/" aria-label="THN — Accueil"><img src="/assets/thn-logo.png" alt="THN — Transports Haute Normandie"></a>
+        <div class="slogan">En mouvement<br>pour vos projets</div>
+      </div>
+    </header>
+    <main class="category-main ${meta.cls}">
+      <div class="category-hero">
+        <img src="${meta.image}" alt="${esc(meta.title)}">
+        <div class="category-hero-overlay">
+          <span class="category-kicker">PARC MATÉRIEL THN</span>
+          <h1>${esc(meta.title)}</h1>
+          <p>${esc(meta.subtitle)}</p>
+          <span class="category-total">${items.length} ${items.length>1?'matériels':'matériel'}</span>
+        </div>
+      </div>
+      <div class="category-heading">
+        <div><h2>Choisissez un matériel</h2><p>Accédez directement à ses documents.</p></div>
+        <a class="back-button" href="/">← Retour</a>
+      </div>
+      <section class="fleet-grid" aria-label="Liste des matériels">${cards}</section>
+    </main>
+  </body></html>`);
 };
