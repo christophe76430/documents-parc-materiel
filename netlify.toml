@@ -5,13 +5,13 @@
   directory = "netlify/functions"
 
 [[redirects]]
-  from = "/machine/T01"
-  to = "/.netlify/functions/machine?id=T01"
+  from = "/machine/:id"
+  to = "/.netlify/functions/machine?id=:id"
   status = 200
   force = true
 
 [[redirects]]
-  from = "/document/T01/:name"
-  to = "/.netlify/functions/document?id=T01&name=:name"
+  from = "/document/:id/:name"
+  to = "/.netlify/functions/document?id=:id&name=:name"
   status = 200
   force = true

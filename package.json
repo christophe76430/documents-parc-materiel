@@ -1,8 +1,7 @@
 {
   "name": "parc-materiel-netlify",
   "private": true,
-  "version": "1.0.0",
   "dependencies": {
-    "@netlify/blobs": "latest"
+    "@netlify/blobs": "^9.0.0"
   }
 }
