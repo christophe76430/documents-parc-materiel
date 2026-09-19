@@ -1,17 +1,23 @@
 [build]
   functions = "netlify/functions"
 
+# Routes publiques des QR codes
 [[redirects]]
-  from = "/machine/:id"
-  to = "/.netlify/functions/machine?id=:id"
+  from = "/machine/*"
+  to = "/.netlify/functions/machine?id=:splat"
   status = 200
+  force = true
 
+# Accès aux documents
 [[redirects]]
-  from = "/document/:id/:name"
-  to = "/.netlify/functions/document?id=:id&name=:name"
+  from = "/document/*"
+  to = "/.netlify/functions/document"
   status = 200
+  force = true
 
+# Administration
 [[redirects]]
   from = "/admin"
   to = "/.netlify/functions/admin"
   status = 200
+  force = true
