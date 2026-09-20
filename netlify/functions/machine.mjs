@@ -28,6 +28,13 @@ function dot(state){
   return `<span class="status-dot ${state==='ok'?'green':state==='warn'?'orange':state==='bad'?'red':'gray'}" aria-hidden="true"></span>`
 }
 
+function formatDateFR(value){
+  if(!value)return '';
+  const d=new Date(value);
+  if(Number.isNaN(d.getTime()))return value;
+  return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+
 function docIcon(type){
   const icons={
     carte:'CG',
@@ -72,12 +79,20 @@ function docs(m,items){
 
     for(const x of list){
       const a=alertState(x.expiry,t);
-      const name=encodeURIComponent(x.key.split('/').pop());
+      const filename=x.key.split('/').pop();
+      const name=encodeURIComponent(filename);
       const legacy=x.key.split('/').length===2?'legacy':t;
       const state=x.expiry?a.state:'ok';
+      const isExpiry=Boolean(x.expiry);
+      const showFilename=!isExpiry && t!=='carte';
+      const detail=isExpiry
+        ? `<span class="doc-detail">Échéance : ${esc(formatDateFR(x.expiry))}</span>`
+        : showFilename
+          ? `<span class="doc-file">${esc(filename)}</span>`
+          : '';
       out+=`<div class="doc-row">
         ${docIcon(t)}
-        <div class="doc-main">${dot(state)}<span class="doc-title">${esc(meta.label)}</span></div>
+        <div class="doc-main">${dot(state)}<div><span class="doc-title">${esc(meta.label)}</span>${detail}</div></div>
         <a class="doc-consult" href="/document/${encodeURIComponent(m.id)}/${encodeURIComponent(legacy)}/${name}" target="_blank" rel="noopener">👁️ Consulter</a>
       </div>`;
     }

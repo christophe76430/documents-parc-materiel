@@ -45,3 +45,5 @@ main:not(.home-main):not(.category-main){max-width:1100px;margin:38px auto;paddi
 .doc-consult:hover{background:#edf6ff}
 .doc-row-missing .doc-main{font-weight:400;color:#64748b}
 @media(max-width:700px){.doc-row{grid-template-columns:48px 1fr}.doc-type-icon{width:44px;height:44px}.doc-consult{grid-column:2;justify-self:start}.doc-title{font-size:16px}}
+
+.doc-main>div{display:flex;flex-direction:column;gap:4px}.doc-detail,.doc-file{font-size:.92rem;color:#55708f}.doc-file{word-break:break-word}.doc-detail{font-weight:600}
