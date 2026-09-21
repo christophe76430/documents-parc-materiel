@@ -1,242 +1,132 @@
-import {
-  MACHINES,
-  TYPES,
-  expectedTypes,
-  store,
-  parseCookies,
-  validToken,
-  cookie,
-  html,
-  esc,
-  alertState
-} from './_shared.mjs';
+import { MACHINES,TYPES,expectedTypes,store,parseCookies,validToken,cookie,makeToken,html,esc,alertState } from './_shared.mjs';
+import filters from '../../filters.json' with { type:'json' };
+export const config={path:'/machine/:id'};
+const NO_EXPIRY=new Set(['carte','barreRouge','divers','doc','devis']);
 
-import filters from '../../filters.json' with { type: 'json' };
-
-export const config = { path: '/machine/:id' };
-
-function page(m, content) {
-  return `<!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(m.name)}</title>
-<link rel="stylesheet" href="/style.css">
-</head>
-<body>
-<main>
-<h1>🏗️ ${esc(m.name)}</h1>
-${content}
-</main>
-</body>
-</html>`;
+function page(m,body,headers={}){
+  return html(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(m.name)} — Parc THN</title><link rel="stylesheet" href="/style.css"></head><body><main><p><a href="/">← Accueil</a></p><h1>🏗️ ${esc(m.name)}</h1>${body}</main></body></html>`,200,headers)
 }
 
-function login(m) {
-  return page(m, `<div class="box">
-    <label>Mot de passe :</label>
-    <form method="post">
-      <input name="password" type="password" autocomplete="current-password" required>
-      <button>Accéder aux documents</button>
-    </form>
-  </div>`);
+function login(m,error=''){
+  return page(m,`<div class="box"><h2>Accès aux documents</h2>${error?`<p class="bad">${esc(error)}</p>`:''}<form method="post"><label>Mot de passe</label><input type="password" name="password" required autofocus><button>Accéder</button></form></div>`)
 }
 
-async function loadItems(id) {
-  const { blobs } = await store().list({ prefix: `${id}/` });
-
-  return await Promise.all(blobs.map(async b => {
-    const parts = b.key.split('/');
-    let type = parts[1] || '';
-    let label = parts[2] || b.key;
-    let expiry = '';
-
-    try {
-      const meta = await store().getMetadata(b.key);
-      expiry = meta?.metadata?.expiry || '';
-      type = meta?.metadata?.type || type;
-      label = meta?.metadata?.label || label;
-    } catch {}
-
-    return { key: b.key, type, label, expiry };
-  }));
+async function loadItems(id){
+  const {blobs}=await store().list({prefix:`${id}/`});
+  return Promise.all(blobs.map(async b=>{
+    const p=b.key.split('/');
+    let type=p[1]||'',label=p.slice(2).join('/')||p[1],expiry='';
+    const meta=await store().getMetadata(b.key).catch(()=>null);
+    type=meta?.metadata?.type||type;
+    label=meta?.metadata?.label||label;
+    expiry=meta?.metadata?.expiry||'';
+    return {key:b.key,type,label,expiry}
+  }))
 }
 
-function statusDot(state) {
-  if (state === 'ok') return '<span class="status-dot green" title="Document valide"></span>';
-  if (state === 'warn') return '<span class="status-dot orange" title="Échéance proche"></span>';
-  if (state === 'bad') return '<span class="status-dot red" title="Échéance très proche ou dépassée"></span>';
-  return '';
+function dot(state){
+  return `<span class="status-dot ${state==='ok'?'green':state==='warn'?'orange':state==='bad'?'red':'gray'}" aria-hidden="true"></span>`
 }
 
-function filterButton(m) {
-  return `<div class="box" style="margin:20px 0">
-    <a href="/filters/${encodeURIComponent(m.id)}" style="text-decoration:none">
-      <button type="button">🔧 Voir les filtres de cet engin</button>
-    </a>
-  </div>`;
+function parseExpiryFromFilename(filename){
+  const s=String(filename||'').replace(/_/g,' ');
+  const m=s.match(/\b(0?[1-9]|[12]\d|3[01])[\s.-]+(0?[1-9]|1[0-2])[\s.-]+(\d{2})\b/);
+  if(!m)return '';
+  const day=Number(m[1]), month=Number(m[2]), yy=Number(m[3]);
+  const year=yy<=69?2000+yy:1900+yy;
+  const d=new Date(year,month-1,day);
+  if(d.getFullYear()!==year||d.getMonth()!==month-1||d.getDate()!==day)return '';
+  return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 }
 
-function docs(m, items) {
-  const by = {};
-  for (const t of expectedTypes(m)) by[t] = [];
-  for (const x of items) {
-    if (!by[x.type]) by[x.type] = [];
-    by[x.type].push(x);
-  }
+function formatDateFR(value){
+  if(!value)return '';
+  const m=String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m)return `${m[3]} ${m[2]} ${m[1].slice(-2)}`;
+  const d=new Date(value);
+  if(Number.isNaN(d.getTime()))return '';
+  return `${String(d.getDate()).padStart(2,'0')} ${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getFullYear()).slice(-2)}`;
+}
 
-  const types = [
-    ...expectedTypes(m),
-    ...Object.keys(by).filter(t => !expectedTypes(m).includes(t) && TYPES[t])
-  ];
+function docIcon(type){
+  const icons={
+    carte:'CG',
+    assurance:'🛡️',
+    mines:'📋',
+    vgp:'🏗️',
+    ct:'🔧',
+    shunt:'⚡',
+    agrement:'📜',
+    barreRouge:'📕',
+    divers:'📄',
+    doc:'📄',
+    devis:'🧾'
+  };
+  const value=icons[type]||'📄';
+  const cls=type==='carte'?' doc-type-icon-carte':'';
+  return `<span class="doc-type-icon${cls}" aria-hidden="true">${value}</span>`;
+}
 
-  let s = `
-    <h2>Documents</h2>
+function filterTable(m){
+  const data=filters[m.id];
+  if(!data)return `<div class="box"><h2>🔧 Filtration</h2><p class="muted">Aucune fiche de filtration documentée pour cet engin dans la source fournie.</p></div>`;
+  const rows=(data.filters||[]).map(([a,b])=>`<tr><td>${esc(a)}</td><td><b>${esc(b)}</b></td></tr>`).join('');
+  return `<div class="box"><h2>🔧 Filtration</h2><p class="muted">${esc(data.source_label||m.name)}</p><div style="overflow-x:auto"><table class="filter-table"><thead><tr><th>Fonction</th><th>Référence</th></tr></thead><tbody>${rows}</tbody></table></div>${data.adblue?`<p><b>AdBlue :</b> ${esc(data.adblue)}</p>`:''}${data.note?`<p class="muted"><b>⚠️ Remarque :</b> ${esc(data.note)}</p>`:''}</div>`
+}
 
-    <div class="status-legend">
-      <div class="legend-item">
-        <span class="status-dot green"></span>
-        <span>Document valide</span>
-      </div>
-      <div class="legend-item">
-        <span class="status-dot orange"></span>
-        <span>Échéance proche</span>
-      </div>
-      <div class="legend-item">
-        <span class="status-dot red"></span>
-        <span>Échéance très proche ou dépassée</span>
-      </div>
-      <div class="legend-item">
-        <span class="status-dot gray"></span>
-        <span>Document non chargé</span>
-      </div>
-    </div>
-  `;
+function docs(m,items){
+  const by={};
+  for(const x of items)(by[x.type]??=[]).push(x);
+  const types=[...expectedTypes(m),...Object.keys(by).filter(t=>TYPES[t]&&!expectedTypes(m).includes(t))];
 
-  for (const t of types) {
-    const meta = TYPES[t];
-    const list = by[t] || [];
+  let out=`<div class="status-legend"><span>${dot('ok')} Document valide</span><span>${dot('warn')} Échéance proche</span><span>${dot('bad')} Échéance très proche ou dépassée</span><span>${dot('none')} Document non chargé</span></div><div class="box"><h2>📄 Documents</h2>`;
 
-    s += `<section><h3>${meta.label}</h3>`;
+  for(const t of types){
+    const meta=TYPES[t],list=by[t]||[];
+    out+=`<section class="doc-section"><h3>${esc(meta.label)}</h3>`;
 
-    if (!list.length) {
-      const monitored = !['carte','barreRouge','divers','doc','devis'].includes(t);
-      s += monitored
-        ? '<p class="muted"><span class="status-dot gray"></span> Document non chargé.</p>'
-        : '<p class="muted">Document non chargé.</p>';
+    if(!list.length){
+      const hasExpiryType=!NO_EXPIRY.has(t);
+      const missingText=hasExpiryType?'Pas de document':'Document non chargé';
+      out+=`<div class="doc-row doc-row-missing">${docIcon(t)}<div class="doc-main">${dot('none')}<span class="${hasExpiryType?'doc-missing-expiry':''}">${esc(missingText)}</span></div></div>`;
+      continue;
     }
 
-    for (const x of list) {
-      const a = alertState(x.expiry, t);
-      const docType =
-        x.key.startsWith(m.id + '/') && x.key.split('/').length === 2
-          ? 'legacy'
-          : t;
-
-      const fileName = encodeURIComponent(x.key.split('/').pop());
-
-      s += `<div class="doc">
-        ${x.expiry ? statusDot(a.state) : ''}
-        <a href="/document/${m.id}/${docType}/${fileName}">
-          ${esc(x.label || x.key)}
-        </a>
-        ${
-          x.expiry
-            ? ` — <span class="${a.state}">${a.text} (${new Date(
-                x.expiry + 'T00:00:00'
-              ).toLocaleDateString('fr-FR')})</span>`
-            : ['carte','barreRouge','divers','doc','devis'].includes(t)
-              ? ''
-              : ' — <span class="muted">Date non renseignée</span>'
-        }
+    for(const x of list){
+      const filename=x.key.split('/').pop();
+      const name=encodeURIComponent(filename);
+      const legacy=x.key.split('/').length===2?'legacy':t;
+      const expiry=x.expiry||parseExpiryFromFilename(filename);
+      const a=alertState(expiry,t);
+      const hasExpiryType=!NO_EXPIRY.has(t);
+      const state=hasExpiryType ? (expiry ? a.state : 'bad') : 'ok';
+      const detail= t==='carte'
+        ? ''
+        : hasExpiryType
+          ? (expiry
+              ? `<span class="doc-detail ${a.state}">Échéance : ${esc(formatDateFR(expiry))}</span>`
+              : `<span class="doc-detail red">Échéance non renseignée</span>`)
+          : `<span class="doc-file">${esc(filename)}</span>`;
+      out+=`<div class="doc-row">
+        ${docIcon(t)}
+        <div class="doc-main">${dot(state)}<div><span class="doc-title">${esc(meta.label)}</span>${detail}</div></div>
+        <a class="doc-consult" href="/document/${encodeURIComponent(m.id)}/${encodeURIComponent(legacy)}/${name}" target="_blank" rel="noopener">👁️ Consulter</a>
       </div>`;
     }
-
-    s += '</section>';
   }
 
-  return s + filterButton(m) + `
-    <p class="muted">Accès valable 8 heures sur cet équipement.</p>
-  `;
+  return out+'</div>'+filterTable(m)+'<p class="muted">Accès valable 8 heures sur cet équipement.</p>'
 }
 
-function filterPage(m) {
-  const data = filters[m.id];
-
-  if (!data) {
-    return page(m, `
-      <h2>🔧 Filtres</h2>
-      <div class="box">
-        <p>La fiche de filtration de cet engin n'est pas présente dans le document source fourni.</p>
-        <p class="muted">Aucune référence n'a été ajoutée lorsqu'elle n'était pas documentée.</p>
-      </div>
-      <p><a href="/machine/${m.id}">← Retour aux documents</a></p>
-    `);
+export default async(req,context)=>{
+  const id=String(context.params?.id||'').toUpperCase(),m=MACHINES[id];
+  if(!m)return html('<h1>Matériel introuvable</h1>',404);
+  const c=parseCookies(req);
+  if(validToken(c.PARC_AUTH,id)||validToken(c.PARC_ADMIN,'ADMIN'))return page(m,docs(m,await loadItems(id)),validToken(c.PARC_AUTH,id)?{'Set-Cookie':cookie('PARC_AUTH',makeToken(id))}:{});
+  if(req.method==='POST'){
+    const fd=await req.formData();
+    if(String(fd.get('password')||'')===(process.env.PARC_PASSWORD||''))return page(m,docs(m,await loadItems(id)),{'Set-Cookie':cookie('PARC_AUTH',makeToken(id))});
+    return login(m,'Mot de passe incorrect.')
   }
-
-  const rows = (data.filters || []).map(([fn, ref]) => `
-    <tr>
-      <td><strong>${esc(fn)}</strong></td>
-      <td>${esc(ref)}</td>
-    </tr>
-  `).join('');
-
-  return page(m, `
-    <div class="box">
-      <h2>🔧 Filtres</h2>
-      <p><strong>${esc(data.source_label || m.name)}</strong></p>
-      ${data.source_note ? `<p class="muted">${esc(data.source_note)}</p>` : ''}
-
-      <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;margin-top:18px">
-          <thead>
-            <tr>
-              <th style="text-align:left;padding:10px;border-bottom:2px solid #ddd">Fonction</th>
-              <th style="text-align:left;padding:10px;border-bottom:2px solid #ddd">Référence</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
-
-      ${data.adblue ? `<p style="margin-top:15px"><strong>AdBlue :</strong> ${esc(data.adblue)}</p>` : ''}
-      ${data.note ? `<p class="muted" style="margin-top:15px"><strong>⚠️ Remarque :</strong> ${esc(data.note)}</p>` : ''}
-    </div>
-
-    <p style="margin-top:20px">
-      <a href="/machine/${m.id}">← Retour aux documents</a>
-    </p>
-  `);
-}
-
-export default async (req, context) => {
-  const id = String(context.params?.id || '').toUpperCase();
-  const m = MACHINES[id];
-
-  if (!m) return html('<h1>Matériel introuvable</h1>', 404);
-
-  const cookies = parseCookies(req);
-
-  if (validToken(cookies.PARC_AUTH, id)) {
-    const items = await loadItems(id);
-    return html(page(m, docs(m, items)), 200, { 'Set-Cookie': cookie(id) });
-  }
-
-  if (req.method === 'POST') {
-    const fd = await req.formData();
-    const password = String(fd.get('password') || '');
-
-    if (password === (process.env.PARC_PASSWORD || '')) {
-      const items = await loadItems(id);
-      return html(page(m, docs(m, items)), 200, { 'Set-Cookie': cookie(id) });
-    }
-
-    return html(
-      page(m, `<p class="bad">Mot de passe incorrect.</p>${login(m)}`),
-      401
-    );
-  }
-
-  return html(login(m));
+  return login(m)
 };
