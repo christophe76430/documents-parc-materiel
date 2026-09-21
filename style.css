@@ -140,3 +140,39 @@ main:not(.home-main):not(.category-main){max-width:1100px;margin:38px auto;paddi
 .home-admin-link:hover{background:#edf5ff;}
 @media(max-width:900px){.home-admin-link{font-size:12px;padding:7px 10px;}.home-header-right{gap:10px;}}
 @media(max-width:650px){.home-admin-link{font-size:11px;padding:6px 8px;}.home-header-right{gap:7px;}}
+
+
+/* V21 — tableaux d'échéances : défilement interne et en-têtes réellement fixes */
+.deadline-table-wrap {
+  height: 500px !important;
+  max-height: 500px !important;
+  overflow-y: auto !important;
+  overflow-x: auto !important;
+  position: relative !important;
+  -webkit-overflow-scrolling: touch;
+}
+.deadline-table-wrap table {
+  width: 100%;
+  min-width: 850px;
+  margin: 0 !important;
+  border-collapse: separate !important;
+  border-spacing: 0;
+}
+.deadline-table-wrap thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 100 !important;
+  background: #edf4fa !important;
+  box-shadow: 0 2px 0 #dbe7f2 !important;
+}
+.overdue-table-wrap {
+  height: 360px !important;
+  max-height: 360px !important;
+}
+.overdue-table-wrap thead th {
+  background: #fdecec !important;
+  color: #b91c1c !important;
+}
+/* Administration : lien toujours cliquable au-dessus de l'image du bandeau */
+.home-header-right, .home-admin-link { position: relative; z-index: 20; }
+.home-admin-link { cursor: pointer; pointer-events: auto; }
