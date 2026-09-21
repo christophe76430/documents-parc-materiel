@@ -28,11 +28,24 @@ function dot(state){
   return `<span class="status-dot ${state==='ok'?'green':state==='warn'?'orange':state==='bad'?'red':'gray'}" aria-hidden="true"></span>`
 }
 
+function parseExpiryFromFilename(filename){
+  const s=String(filename||'').replace(/_/g,' ');
+  const m=s.match(/\b(0?[1-9]|[12]\d|3[01])[\s.-]+(0?[1-9]|1[0-2])[\s.-]+(\d{2})\b/);
+  if(!m)return '';
+  const day=Number(m[1]), month=Number(m[2]), yy=Number(m[3]);
+  const year=yy<=69?2000+yy:1900+yy;
+  const d=new Date(year,month-1,day);
+  if(d.getFullYear()!==year||d.getMonth()!==month-1||d.getDate()!==day)return '';
+  return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+}
+
 function formatDateFR(value){
   if(!value)return '';
+  const m=String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m)return `${m[3]} ${m[2]} ${m[1].slice(-2)}`;
   const d=new Date(value);
-  if(Number.isNaN(d.getTime()))return value;
-  return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  if(Number.isNaN(d.getTime()))return '';
+  return `${String(d.getDate()).padStart(2,'0')} ${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getFullYear()).slice(-2)}`;
 }
 
 function docIcon(type){
@@ -78,18 +91,20 @@ function docs(m,items){
     }
 
     for(const x of list){
-      const a=alertState(x.expiry,t);
       const filename=x.key.split('/').pop();
       const name=encodeURIComponent(filename);
       const legacy=x.key.split('/').length===2?'legacy':t;
-      const state=x.expiry?a.state:'ok';
-      const isExpiry=Boolean(x.expiry);
-      const showFilename=!isExpiry && t!=='carte';
-      const detail=isExpiry
-        ? `<span class="doc-detail">Échéance : ${esc(formatDateFR(x.expiry))}</span>`
-        : showFilename
-          ? `<span class="doc-file">${esc(filename)}</span>`
-          : '';
+      const expiry=x.expiry||parseExpiryFromFilename(filename);
+      const a=alertState(expiry,t);
+      const hasExpiryType=!['carte','barreRouge','divers','doc','devis'].includes(t);
+      const state=hasExpiryType ? (expiry ? a.state : 'bad') : 'ok';
+      const detail= t==='carte'
+        ? ''
+        : hasExpiryType
+          ? (expiry
+              ? `<span class="doc-detail ${a.state}">Échéance : ${esc(formatDateFR(expiry))}</span>`
+              : `<span class="doc-detail red">Échéance non renseignée</span>`)
+          : `<span class="doc-file">${esc(filename)}</span>`;
       out+=`<div class="doc-row">
         ${docIcon(t)}
         <div class="doc-main">${dot(state)}<div><span class="doc-title">${esc(meta.label)}</span>${detail}</div></div>
