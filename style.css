@@ -59,3 +59,33 @@ main:not(.home-main):not(.category-main){max-width:1100px;margin:38px auto;paddi
 .deadline-select-label{display:block;margin:12px 0 6px;font-size:13px;font-weight:700;color:#41678f}
 #deadline-select{max-width:100%;background:#fff}
 @media(max-width:650px){.deadline-highlight{display:block}.deadline-status{margin-top:10px}}
+
+
+/* Accueil final THN */
+.home{background:#f7fbff}
+.home-header{background:#fff}
+.home-header-inner{max-width:1460px;margin:0 auto;padding:18px 35px 14px;display:flex;justify-content:space-between;align-items:flex-start;gap:30px}
+.home-header h1{margin:0;color:#123e73;font-size:32px;letter-spacing:.2px}
+.home-header p{margin:4px 0 0;color:#214a79;font-size:18px}
+.home-header img{width:205px;max-width:30vw;height:auto}
+.home-main{padding-top:18px}
+.category-grid{gap:24px}
+.category-card>img{height:240px}
+.category-body{min-height:140px;padding:18px 20px}
+.category-content h2{font-size:24px}
+.category-card.drivers .category-content h2{font-size:24px}
+.deadlines{margin-top:22px;padding:16px 18px;border-radius:16px}
+.deadlines-head{align-items:center}
+.deadlines h2{font-size:27px}
+.deadlines-head p{font-size:14px}
+.deadline-table-wrap{overflow-x:auto}
+.deadlines table{margin-top:12px;border:1px solid #dfe8f1;border-radius:10px;overflow:hidden;min-width:850px}
+.deadlines th{background:#edf4fa;color:#29496b;font-size:14px}
+.deadlines td{font-size:14px;color:#29496b;background:#fff}
+.deadlines th,.deadlines td{padding:8px 12px;border:1px solid #e1eaf2}
+.deadlines td:first-child{color:#173d70}
+.days{font-weight:700}
+.table-status{font-weight:700;white-space:nowrap}
+.site-footer{display:flex;justify-content:space-between;padding:22px 5px 6px;color:#355d87;font-size:13px}
+@media(max-width:1000px){.home-header h1{font-size:26px}.category-card>img{height:210px}}
+@media(max-width:650px){.home-header-inner{padding:15px;align-items:center}.home-header h1{font-size:22px}.home-header p{font-size:15px}.home-header img{width:150px}.category-card>img{height:190px}.site-footer{display:block;line-height:1.8}}

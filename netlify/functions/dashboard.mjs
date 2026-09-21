@@ -47,7 +47,7 @@ export default async()=>{
       days,
       status:s,
       priority:priority(s),
-      priorityLabel:s.class==='red'?'Priorité haute':s.class==='orange'?'À surveiller':'Échéance à venir'
+      priorityLabel:s.class==='red'?'Urgent':s.class==='orange'?'Échéance proche':'Valide'
     };
   }));
   const items=rows.filter(Boolean).sort((a,b)=>a.priority-b.priority||a.days-b.days||a.name.localeCompare(b.name,'fr'));

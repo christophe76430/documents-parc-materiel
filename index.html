@@ -1,12 +1,44 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Parc matériel — THN</title><link rel="stylesheet" href="/style.css"></head><body class="home"><header class="site-header"><div class="header-inner"><a class="brand" href="/"><img src="/assets/thn-logo.png" alt="THN — Transports Haute Normandie"></a><div class="slogan">En mouvement<br>pour vos projets</div><div class="top-links">SÉCURITÉ <span>|</span> PERFORMANCE <span>|</span> MOBILITÉ</div></div></header><main class="home-main"><section class="intro"><h1>Choisissez une catégorie</h1><p>Accédez aux documents de votre parc par famille de matériel</p></section><section class="category-grid"><a class="category-card truck" href="/category/camions"><img src="/assets/camions.jpg" alt="Camion THN"><div class="category-body"><div class="category-icon">▣</div><div class="category-content"><h2>Camions</h2><p>Poids lourds et ensembles routiers</p></div><span class="arrow">→</span></div></a><a class="category-card rail" href="/category/pelles"><img src="/assets/railroute.jpg" alt="Pelle rail-route THN"><div class="category-body"><div class="category-icon">⚒</div><div class="category-content"><h2>Matériel rail-route</h2><p>Pelles rail-route et équipements chemin de fer</p></div><span class="arrow">→</span></div></a><a class="category-card vehicles" href="/category/vehicules"><img src="/assets/chantier-ferroviaire.jpg" alt="Chantier ferroviaire THN"><div class="category-body"><div class="category-icon">▱</div><div class="category-content"><h2>Véhicules</h2><p>Voitures, utilitaires et véhicules légers</p></div><span class="arrow">→</span></div></a><a class="category-card drivers" href="/chauffeurs"><img src="/assets/chauffeur.jpg" alt="Espace chauffeurs THN"><div class="category-body"><div class="category-icon">👥</div><div class="category-content"><h2>Espace chauffeurs</h2><p>Vos documents, formations et informations utiles</p></div><span class="arrow">→</span></div></a></section><section class="deadlines"><div class="deadlines-head"><div><h2>▣ &nbsp;Échéances à venir</h2><p>Les plus urgentes apparaissent en premier.</p></div><a href="/echeances">Voir toutes les échéances →</a></div><div id="deadline-table"><p class="muted">Chargement…</p></div></section><footer class="site-footer"><div class="iso-wrap"><img src="/assets/iso.png" alt="Certification ISO"></div><div class="footer-bottom"><span>TRANSPORTS HAUTE NORMANDIE &nbsp;|&nbsp; Le Havre – Normandie</span><span class="separator">|</span><span>© 2026 Christophe Della Casa</span><span class="footer-slogan">En mouvement pour vos projets</span></div></footer></main><script>
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Parc matériel — THN</title><link rel="stylesheet" href="/style.css">
+</head>
+<body class="home">
+<header class="home-header">
+  <div class="home-header-inner">
+    <div><h1>TRANSPORTS HAUTE NORMANDIE</h1><p>Accédez rapidement à vos documents par famille de matériel</p></div>
+    <img src="/assets/thn-logo.png" alt="THN — Transports Haute Normandie">
+  </div>
+</header>
+<main class="home-main">
+  <section class="category-grid">
+    <a class="category-card truck" href="/category/camions"><img src="/assets/camions.jpg" alt="Camion THN"><div class="category-body"><div class="category-icon">▣</div><div class="category-content"><h2>Camions</h2><p>Poids lourds et ensembles routiers</p></div><span class="arrow">→</span></div></a>
+    <a class="category-card rail" href="/category/pelles"><img src="/assets/railroute.jpg" alt="Pelle rail-route THN"><div class="category-body"><div class="category-icon">⚒</div><div class="category-content"><h2>Matériel rail-route</h2><p>Pelles rail-route et équipements chemin de fer</p></div><span class="arrow">→</span></div></a>
+    <a class="category-card vehicles" href="/category/vehicules"><img src="/assets/chantier-ferroviaire.jpg" alt="Véhicules THN sur chantier ferroviaire"><div class="category-body"><div class="category-icon">▱</div><div class="category-content"><h2>Véhicules</h2><p>Voitures, utilitaires et véhicules légers</p></div><span class="arrow">→</span></div></a>
+    <a class="category-card drivers" href="/chauffeurs"><img src="/assets/chauffeur.jpg" alt="Espace chauffeurs THN"><div class="category-body"><div class="category-icon">👥</div><div class="category-content"><h2>Espace</h2><p>Vos documents, formations et informations utiles</p></div><span class="arrow">→</span></div></a>
+  </section>
+
+  <section class="deadlines">
+    <div class="deadlines-head">
+      <div><h2>▣ &nbsp;Échéances à venir</h2><p>Récapitulatif des documents des engins et véhicules arrivant prochainement à échéance</p></div>
+      <a href="/echeances">Voir toutes les échéances →</a>
+    </div>
+    <div id="deadline-table"><p class="muted">Chargement…</p></div>
+  </section>
+
+  <footer class="site-footer">
+    <span>TRANSPORTS HAUTE NORMANDIE &nbsp; | &nbsp; Le Havre - Normandie</span>
+    <span>Copyright 2026 Christophe Della Casa</span>
+  </footer>
+</main>
+<script>
 fetch('/api/dashboard').then(r=>r.json()).then(d=>{
-  const items=d.items||[];
-  const root=document.getElementById('deadline-table');
-  if(!items.length){root.innerHTML='<p class="muted">Aucune échéance à venir.</p>';return;}
-  const option=(x,i)=>`<option value="${i}">${x.priorityLabel} — ${x.name} — ${x.label} — ${x.expiry}</option>`;
-  const card=x=>`<div class="deadline-highlight"><div><b>${x.name}</b><span class="deadline-type">${x.category} · ${x.label}</span><span class="deadline-date">Échéance : ${x.expiry}</span></div><div class="deadline-status"><span class="dot ${x.status.class}"></span>${x.priorityLabel}</div></div>`;
-  root.innerHTML=`<div id="deadline-current">${card(items[0])}</div>${items.length>1?`<label class="deadline-select-label" for="deadline-select">Voir les ${items.length} échéances à venir</label><select id="deadline-select"><option value="" selected disabled>Choisir une échéance…</option>${items.map(option).join('')}</select>`:''}`;
-  const sel=document.getElementById('deadline-select');
-  if(sel)sel.addEventListener('change',()=>{document.getElementById('deadline-current').innerHTML=card(items[Number(sel.value)]);});
+ const items=(d.items||[]).slice(0,5), root=document.getElementById('deadline-table');
+ if(!items.length){root.innerHTML='<p class="muted">Aucune échéance à venir.</p>';return;}
+ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const rows=items.map(x=>`<tr><td><strong>${esc(x.name)}</strong></td><td>${esc(x.category)}</td><td>${esc(x.label)}</td><td>${esc(x.expiry)}</td><td class="days ${x.status.class}">${x.days} jours</td><td><span class="table-status"><span class="dot ${x.status.class}"></span>${esc(x.priorityLabel)}</span></td></tr>`).join('');
+ root.innerHTML=`<div class="deadline-table-wrap"><table><thead><tr><th>Matériel</th><th>Type</th><th>Document</th><th>Date d’échéance</th><th>Jours restants</th><th>Statut</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }).catch(()=>document.getElementById('deadline-table').innerHTML='<p class="bad">Impossible de charger les échéances.</p>');
-</script></body></html>
+</script>
+</body></html>
