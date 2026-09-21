@@ -86,7 +86,9 @@ function docs(m,items){
     out+=`<section class="doc-section"><h3>${esc(meta.label)}</h3>`;
 
     if(!list.length){
-      out+=`<div class="doc-row doc-row-missing">${docIcon(t)}<div class="doc-main">${dot('none')}<span>${esc(meta.label)}</span></div></div>`;
+      const hasExpiryType=!NO_EXPIRY.has(t);
+      const missingText=hasExpiryType?'Pas de document':'Document non chargé';
+      out+=`<div class="doc-row doc-row-missing">${docIcon(t)}<div class="doc-main">${dot('none')}<span class="${hasExpiryType?'doc-missing-expiry':''}">${esc(missingText)}</span></div></div>`;
       continue;
     }
 
@@ -96,7 +98,7 @@ function docs(m,items){
       const legacy=x.key.split('/').length===2?'legacy':t;
       const expiry=x.expiry||parseExpiryFromFilename(filename);
       const a=alertState(expiry,t);
-      const hasExpiryType=!['carte','barreRouge','divers','doc','devis'].includes(t);
+      const hasExpiryType=!NO_EXPIRY.has(t);
       const state=hasExpiryType ? (expiry ? a.state : 'bad') : 'ok';
       const detail= t==='carte'
         ? ''
