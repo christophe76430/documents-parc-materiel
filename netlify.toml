@@ -4,15 +4,15 @@
 [functions]
   node_bundler = "esbuild"
 
-# Routes explicites pour l'administration
+# L'accueil administration reste statique : le traitement est fait par la fonction.
 [[redirects]]
   from = "/admin"
-  to = "/.netlify/functions/admin"
+  to = "/admin.html"
   status = 200
   force = true
 
 [[redirects]]
   from = "/admin/*"
-  to = "/.netlify/functions/admin"
+  to = "/admin.html"
   status = 200
   force = true

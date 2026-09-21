@@ -86,7 +86,7 @@ if(start) start.addEventListener('click', async()=>{
     status.textContent='Envoi '+(i+1)+'/'+files.length+' : '+path;
 
     try{
-      const r=await fetch('/admin',{
+      const r=await fetch('/.netlify/functions/admin',{
         method:'POST',
         body:fd
       });
