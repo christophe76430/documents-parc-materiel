@@ -16,22 +16,40 @@ function priority(s){return s.class==='red'?0:s.class==='orange'?1:s.class==='gr
 
 export default async()=>{
   const {blobs}=await store().list({prefix:''});
-  const items=[];
-  for(const b of blobs){
+  const candidates=blobs.filter(b=>MACHINES[b.key.split('/')[0]]);
+  const rows=await Promise.all(candidates.map(async b=>{
     const p=b.key.split('/');
-    if(!MACHINES[p[0]])continue;
-    const meta=(await store().getMetadata(b.key).catch(()=>null))?.metadata||{};
-    const type=meta.type||p[1]||'';
-    if(['carte','barreRouge','divers','doc','devis'].includes(type))continue;
+    const id=p[0];
     const filename=p[p.length-1]||'';
-    const expiry=meta.expiry||parseExpiryFromFilename(filename);
-    if(!expiry)continue;
-    const days=Math.ceil((new Date(expiry+'T23:59:59')-new Date())/86400000);
-    if(days<0||days>30)continue;
+    const typeFromKey=p[1]||'';
+    // First use the date convention in the filename; otherwise read stored metadata.
+    let expiry=parseExpiryFromFilename(filename);
+    let meta={};
+    if(!expiry){
+      meta=(await store().getMetadata(b.key).catch(()=>null))?.metadata||{};
+      expiry=meta.expiry||'';
+    }
+    if(!expiry)return null;
+    const type=meta.type||typeFromKey;
+    if(['carte','barreRouge','divers','doc','devis'].includes(type))return null;
+    const date=new Date(`${expiry}T23:59:59`);
+    if(Number.isNaN(date.getTime()))return null;
+    const days=Math.ceil((date-new Date())/86400000);
+    // Accueil: upcoming deadlines within the next 90 days, sorted by urgency.
+    if(days<0||days>90)return null;
     const s=status(expiry);
-    const priorityLabel=s.class==='red'?'Priorité haute':s.class==='orange'?'À surveiller':'Échéance à venir';
-    items.push({id:p[0],name:MACHINES[p[0]].name,category:MACHINES[p[0]].group==='pelles'?'Matériel rail-route':MACHINES[p[0]].group==='vehicules'?'Véhicule':'Camion',label:TYPES[type]?.label||meta.label||type,expiry:new Date(expiry+'T00:00:00').toLocaleDateString('fr-FR'),days,status:s,priority:priority(s),priorityLabel});
-  }
-  items.sort((a,b)=>a.priority-b.priority||a.days-b.days||a.name.localeCompare(b.name,'fr'));
+    return {
+      id,
+      name:MACHINES[id].name,
+      category:MACHINES[id].group==='pelles'?'Matériel rail-route':MACHINES[id].group==='vehicules'?'Véhicule':'Camion',
+      label:TYPES[type]?.label||meta.label||type,
+      expiry:new Date(`${expiry}T00:00:00`).toLocaleDateString('fr-FR'),
+      days,
+      status:s,
+      priority:priority(s),
+      priorityLabel:s.class==='red'?'Priorité haute':s.class==='orange'?'À surveiller':'Échéance à venir'
+    };
+  }));
+  const items=rows.filter(Boolean).sort((a,b)=>a.priority-b.priority||a.days-b.days||a.name.localeCompare(b.name,'fr'));
   return json({items});
 };
