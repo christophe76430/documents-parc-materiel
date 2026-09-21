@@ -52,7 +52,7 @@ export function expectedTypes(m){
   return ['assurance','vgp','shunt'];
 }
 
-const secret = () => process.env.PARC_PASSWORD || '';
+const secret = () => process.env.PARC_PASSWORD || '76430';
 export function makeToken(id){
   const exp = Date.now()+TTL;
   const payload = `${id}.${exp}`;
