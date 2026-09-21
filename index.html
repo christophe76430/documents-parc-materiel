@@ -7,16 +7,26 @@
 <body class="home">
 <header class="home-header">
   <div class="home-header-inner">
-    <div><h1>TRANSPORTS HAUTE NORMANDIE</h1><p>Accédez rapidement à vos documents par famille de matériel</p></div>
-    <img src="/assets/thn-logo.png" alt="THN — Transports Haute Normandie">
+    <div class="brand-block">
+      <img class="home-thn-logo" src="/assets/thn-logo.png" alt="THN — Transports Haute Normandie">
+      <div class="home-slogan">En mouvement<br>pour vos projets</div>
+    </div>
+    <div class="home-header-right">
+      <img class="home-iso-logo" src="/assets/iso.png" alt="ISO">
+    </div>
   </div>
 </header>
 <main class="home-main">
+  <section class="home-intro">
+    <h1>Choisissez une catégorie</h1>
+    <p>Accédez aux documents de votre parc par famille de matériel</p>
+  </section>
+
   <section class="category-grid">
     <a class="category-card truck" href="/category/camions"><img src="/assets/camions.jpg" alt="Camion THN"><div class="category-body"><div class="category-icon">▣</div><div class="category-content"><h2>Camions</h2><p>Poids lourds et ensembles routiers</p></div><span class="arrow">→</span></div></a>
     <a class="category-card rail" href="/category/pelles"><img src="/assets/railroute.jpg" alt="Pelle rail-route THN"><div class="category-body"><div class="category-icon">⚒</div><div class="category-content"><h2>Matériel rail-route</h2><p>Pelles rail-route et équipements chemin de fer</p></div><span class="arrow">→</span></div></a>
-    <a class="category-card vehicles" href="/category/vehicules"><img src="/assets/chantier-ferroviaire.jpg" alt="Véhicules THN sur chantier ferroviaire"><div class="category-body"><div class="category-icon">▱</div><div class="category-content"><h2>Véhicules</h2><p>Voitures, utilitaires et véhicules légers</p></div><span class="arrow">→</span></div></a>
-    <a class="category-card drivers" href="/chauffeurs"><img src="/assets/chauffeur.jpg" alt="Espace chauffeurs THN"><div class="category-body"><div class="category-icon">👥</div><div class="category-content"><h2>Espace</h2><p>Vos documents, formations et informations utiles</p></div><span class="arrow">→</span></div></a>
+    <a class="category-card vehicles" href="/category/vehicules"><img src="/assets/chantier-ferroviaire.jpg" alt="Véhicule THN sur chantier ferroviaire"><div class="category-body"><div class="category-icon">▱</div><div class="category-content"><h2>Véhicules</h2><p>Voitures, utilitaires et véhicules légers</p></div><span class="arrow">→</span></div></a>
+    <a class="category-card drivers" href="/chauffeurs"><img src="/assets/chauffeur.jpg" alt="Espace THN"><div class="category-body"><div class="category-icon">👥</div><div class="category-content"><h2>Espace</h2><p>Vos documents, formations et informations utiles</p></div><span class="arrow">→</span></div></a>
   </section>
 
   <section class="deadlines">
@@ -35,7 +45,7 @@
 
   <footer class="site-footer">
     <span>TRANSPORTS HAUTE NORMANDIE &nbsp; | &nbsp; Le Havre - Normandie</span>
-    <span>Copyright 2026 Christophe Della Casa</span>
+    <span>Copyright 2026</span>
   </footer>
 </main>
 <script>
@@ -49,10 +59,9 @@ fetch('/api/dashboard').then(r=>r.json()).then(d=>{
    const rows=items.map(x=>`<tr><td><strong>${esc(x.name)}</strong></td><td>${esc(x.category)}</td><td>${esc(x.label)}</td><td>${esc(x.expiry)}</td><td class="days ${x.status.class}">${x.days} jours</td><td><span class="table-status"><span class="dot ${x.status.class}"></span>${esc(x.priorityLabel)}</span></td></tr>`).join('');
    root.innerHTML=`<div class="deadline-table-wrap"><table><thead><tr><th>Matériel</th><th>Type</th><th>Document</th><th>Date d’échéance</th><th>Jours restants</th><th>Statut</th></tr></thead><tbody>${rows}</tbody></table></div>`;
  }
- if(!overdue.length){
-   document.getElementById('overdue-section').style.display='none';
- } else {
-   const rows=overdue.map(x=>`<tr><td><strong>${esc(x.name)}</strong></td><td>${esc(x.category)}</td><td>${esc(x.label)}</td><td>${esc(x.expiry)}</td><td class="days red">${Math.abs(x.days)} jours de retard</td><td><span class="table-status red"><span class="dot red"></span>Dépassée</span></td></tr>`).join('');
+ if(!overdue.length){document.getElementById('overdue-section').style.display='none';}
+ else {
+   const rows=overdue.map(x=>`<tr><td><strong>${esc(x.name)}</strong></td><td>${esc(x.category)}</td><td>${esc(x.label)}</td><td>${esc(x.expiry)}</td><td class="days red">${Math.abs(x.days)} jours de retard</td><td><span class="table-status red"><span class="dot red"></span>Urgent</span></td></tr>`).join('');
    overRoot.innerHTML=`<div class="deadline-table-wrap overdue-table-wrap"><table><thead><tr><th>Matériel</th><th>Type</th><th>Document</th><th>Date d’échéance</th><th>Retard</th><th>Statut</th></tr></thead><tbody>${rows}</tbody></table></div>`;
  }
 }).catch(()=>{document.getElementById('deadline-table').innerHTML='<p class="bad">Impossible de charger les échéances.</p>';document.getElementById('overdue-table').innerHTML='';});

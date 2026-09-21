@@ -12,6 +12,13 @@ function parseExpiryFromFilename(filename){
   return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 }
 
+function dashboardStatus(days){
+  if(days < 0) return {class:'red',label:'Urgent'};
+  if(days <= 10) return {class:'red',label:'Urgent'};
+  if(days <= 30) return {class:'orange',label:'Échéance proche'};
+  return {class:'green',label:'Valide'};
+}
+
 function priority(s){return s.class==='red'?0:s.class==='orange'?1:s.class==='green'?2:3}
 
 export default async()=>{
@@ -35,7 +42,7 @@ export default async()=>{
     const date=new Date(`${expiry}T23:59:59`);
     if(Number.isNaN(date.getTime()))return null;
     const days=Math.ceil((date-new Date())/86400000);
-    const s=status(expiry);
+    const s=dashboardStatus(days);
     // Les échéances futures et dépassées sont conservées pour l'accueil.
     // L'interface les sépare en deux tableaux.
 
@@ -48,11 +55,11 @@ export default async()=>{
       days,
       status:s,
       priority:priority(s),
-      priorityLabel:s.class==='red'?'Urgent':s.class==='orange'?'Échéance proche':'Valide'
+      priorityLabel:s.label
     };
   }));
   const all=rows.filter(Boolean);
   const items=all.filter(x=>x.days>=0).sort((a,b)=>a.priority-b.priority||a.days-b.days||a.name.localeCompare(b.name,'fr'));
-  const overdue=all.filter(x=>x.days<0).sort((a,b)=>a.days-b.days||a.name.localeCompare(b.name,'fr')).map(x=>({...x, priorityLabel:'Dépassée'}));
+  const overdue=all.filter(x=>x.days<0).sort((a,b)=>a.days-b.days||a.name.localeCompare(b.name,'fr')).map(x=>({...x, priorityLabel:'Urgent'}));
   return json({items,overdue});
 };
