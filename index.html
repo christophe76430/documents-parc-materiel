@@ -34,7 +34,7 @@
 </main>
 <script>
 fetch('/api/dashboard').then(r=>r.json()).then(d=>{
- const items=(d.items||[]).slice(0,5), root=document.getElementById('deadline-table');
+ const items=(d.items||[]), root=document.getElementById('deadline-table');
  if(!items.length){root.innerHTML='<p class="muted">Aucune échéance à venir.</p>';return;}
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const rows=items.map(x=>`<tr><td><strong>${esc(x.name)}</strong></td><td>${esc(x.category)}</td><td>${esc(x.label)}</td><td>${esc(x.expiry)}</td><td class="days ${x.status.class}">${x.days} jours</td><td><span class="table-status"><span class="dot ${x.status.class}"></span>${esc(x.priorityLabel)}</span></td></tr>`).join('');

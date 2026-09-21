@@ -89,3 +89,10 @@ main:not(.home-main):not(.category-main){max-width:1100px;margin:38px auto;paddi
 .site-footer{display:flex;justify-content:space-between;padding:22px 5px 6px;color:#355d87;font-size:13px}
 @media(max-width:1000px){.home-header h1{font-size:26px}.category-card>img{height:210px}}
 @media(max-width:650px){.home-header-inner{padding:15px;align-items:center}.home-header h1{font-size:22px}.home-header p{font-size:15px}.home-header img{width:150px}.category-card>img{height:190px}.site-footer{display:block;line-height:1.8}}
+
+/* Échéances accueil : au moins 10 lignes visibles, puis ascenseur vertical */
+.deadline-table-wrap{max-height:560px;overflow-y:auto;overflow-x:auto;border-radius:10px;}
+.deadline-table-wrap table{margin-top:12px;}
+.deadline-table-wrap thead th{position:sticky;top:0;z-index:2;background:#edf4fa;}
+.deadline-table-wrap tbody tr{height:44px;}
+@media(max-width:650px){.deadline-table-wrap{max-height:560px;overflow-y:auto;overflow-x:auto;}.deadline-table-wrap table{min-width:850px;}}
