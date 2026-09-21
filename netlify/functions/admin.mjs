@@ -1,49 +1,137 @@
 import crypto from 'node:crypto';
-import { MACHINES,TYPES,DRIVER_CATEGORIES,store,driverStore,parseCookies,validToken,makeToken,cookie,esc,parseDate,iso,hashSecret,driverCodeMatches,html } from './_shared.mjs';
+import { MACHINES,TYPES,DRIVER_CATEGORIES,expectedTypes,store,driverStore,parseCookies,validToken,cookie,clearCookie,makeToken,html,esc,parseDate,iso,alertState,hashSecret } from './_shared.mjs';
 
 export const config={path:'/admin'};
-const MACHINE_PATHS={
-'T01 - EW-610-MD - Man TGS 35.420 8x4 Grue':'T01','T04 - EB-837-AD - Man TGS 28.440':'T04','T08 - BE-763-WR - Man TGS 35.400':'T08','T09 - DY-847-PK - Man TGS 35.440':'T09','T21 - FJ-210-WY - VOLVO FM (4)':'T21','T22 - FT-812-DM - VOLVO FM 6x4':'T22','T23 - GF-353-RM - MERCEDES AROCS':'T23','T24 - GP-257-GM Mercedes':'T24',
-'REM05 - EW-638-MH - Benne 3 essieux':'REM05','REM06 - CB-024-NG - Plateau Extensible':'REM06','REM08 - GQ-842-HQ':'REM08','REM09 -  ANSSEMS N GK-005-XL':'ANSEMS',
-'Pelle 3 -  Pelle à chenilles VOLVO Nr Serie 221447':'P03','Pelle 10 - Pelle à pneus  DOOSAN Nr Serie 50932':'P10','Pelle 11 - Pelle à chenilles CASE CX 145 CSR Serie 1592':'P11','Pelle 12 - Pelle à pneus DOOSAN DX165W-5 Nr Serie 1225':'P12','Pelle 16 - Pelle RR ACX 160 WRR A1P13007':'P16','Pelle 17 - Pelle RR ACX 160 WRR A1P13012':'P17','Pelle 18 - Pelle RR ACX 160 WRR A1P13013':'P18','Pelle 19 - Pelle RR ACX 105 RR M1P160009':'P19','Pelle 20 - Pelle RR ACX 23 RR A2P180013':'P20','Pelle 21 - Pelle RR ACX 23 RR A2P190038':'P21','Pelle 24 -Pelle  RR ATLAS 21 RR 243Z301276':'P24','Pelle 25- Pelle RR ATLAS 21 RR 243Z301279':'P25',
-'Remorque RR acx  AGT 24 319':'RRA319','Remorque RR acx AGT 24 034':'RRA034','Remorque RR acx AGT 24 035':'RRA035','Remorque RR acx AGT 24 318':'RRA318','remorque RR atlas AGT 26 064':'RRAT064','remorque RR atlas AGT 26 089':'RRAT089',
-'1. DL 884 QM - MERCEDES Sprinter 3T5 benne':'DL884QM','1. DT-494-VJ - CITROEN C3':'DT494VJ','1. DV-098-KA - CITROEN Jumpy':'DV098KA','1. EQ-811-AX - CITROEN Berlingo':'EQ811AX','1. FE-191-ZT - RENAULT Clio':'FE191ZT','1. FE-798-ZS - RENAULT Clio':'FE798ZS','1. FG-520-PX - RENAULT Kangoo':'FG520PX','1. FH-458-MR - RENAULT Clio':'FH458MR','1. FL-238-XW - RENAULT Kangoo':'FL238XW','1. FL-865-XW - RENAULT Kangoo':'FL865XW','1. FM-019-PV - RENAULT Kangoo long cargo':'FM019PV','1. FV-628-AN - RENAULT Kangoo':'FV628AN','1. FV-643-AN - RENAULT Kangoo':'FV643AN','1. FZ-856-BY - SEAT':'FZ856BY'};
-const aliases=Object.entries(MACHINE_PATHS).map(([n,id])=>[n.toLowerCase(),id]);
 const NO_EXPIRY=new Set(['carte','barreRouge','divers','doc','devis']);
-const AGR=new Set(['P16','P17','P18','P19','P20','P21','P24','P25','RRA319','RRA034','RRA035','RRA318','RRAT064','RRAT089']);
 const adminOK=req=>validToken(parseCookies(req).PARC_ADMIN,'ADMIN');
-const shell=body=>`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration THN</title><link rel="stylesheet" href="/style.css"></head><body><main><h1>Administration parc matériel</h1>${body}</main></body></html>`;
-const typeFromPath=path=>{const p=String(path).split('/').filter(Boolean).map(x=>x.toLowerCase().trim());const f=p[p.length-2]||'';if(f==='assurance')return'assurance';if(f==='vgp')return'vgp';if(f==='mines')return'mines';if(['ct','contrôle technique','controle technique'].includes(f))return'ct';if(['barre shunt','barre de shunt'].includes(f))return'shunt';if(['agrement','agrément'].includes(f))return'agrement';if(['carte grise','carte'].includes(f))return'carte';if(['barre rouge','barré rouge','barre-rouge'].includes(f))return'barreRouge';if(f==='divers')return'divers';if(['doc','docs'].includes(f))return'doc';if(f==='devis')return'devis';return null};
-const machineIdFromPath=path=>{for(const p of String(path).split('/').filter(Boolean)){const hit=aliases.find(([n])=>n===p.toLowerCase());if(hit)return hit[1]}return null};
-const allowed=(id,type)=>!!MACHINES[id]&&!!TYPES[type]&&!(type==='agrement'&&!AGR.has(id));
-const expiryFor=(type,name)=>NO_EXPIRY.has(type)?'':iso(parseDate(name));
+
+function shell(body){return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration THN</title><link rel="stylesheet" href="/style.css"></head><body><main class="admin-page"><h1>Administration du parc matériel</h1>${body}</main></body></html>`}
+
+function parseExpiryFromFilename(filename){
+  const s=String(filename||'').replace(/_/g,' ');
+  const m=s.match(/\b(0?[1-9]|[12]\d|3[01])[\s.-]+(0?[1-9]|1[0-2])[\s.-]+(\d{2})\b/);
+  if(!m)return '';
+  const day=Number(m[1]),month=Number(m[2]),yy=Number(m[3]);
+  const year=yy<=69?2000+yy:1900+yy;
+  const d=new Date(year,month-1,day);
+  if(d.getFullYear()!==year||d.getMonth()!==month-1||d.getDate()!==day)return '';
+  return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+}
+function formatDate(v){if(!v)return '—';const m=String(v).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]} ${m[2]} ${m[1].slice(-2)}`:String(v)}
+function daysUntil(v){if(!v)return null;const d=new Date(`${v}T23:59:59`);return Math.ceil((d-Date.now())/86400000)}
+function statusHtml(type,expiry){
+  if(NO_EXPIRY.has(type)) return '<span class="admin-status neutral">Sans échéance</span>';
+  if(!expiry) return '<span class="admin-status red">Échéance non renseignée</span>';
+  const a=alertState(expiry,type); const cls=a.state==='bad'?'red':a.state==='warn'?'orange':'green';
+  const label=a.state==='bad'?'Dépassé':a.state==='warn'?'Échéance proche':'Valide';
+  return `<span class="admin-status ${cls}">${label}</span>`;
+}
 
 async function driverList(){const {blobs}=await driverStore().list({prefix:'driver/'});const out=[];for(const b of blobs){const d=await driverStore().get(b.key,{type:'json'}).catch(()=>null);if(d)out.push(d)}return out}
-async function docsList(){const {blobs}=await store().list({prefix:''});const out=[];for(const b of blobs){const p=b.key.split('/');if(!MACHINES[p[0]])continue;const m=await store().getMetadata(b.key).catch(()=>null);out.push({key:b.key,id:p[0],type:p[1]||'',label:m?.metadata?.label||p.slice(2).join('/')})}return out.sort((a,b)=>`${MACHINES[a.id].name}${a.label}`.localeCompare(`${MACHINES[b.id].name}${b.label}`,'fr'))}
+async function docsList(){
+  const {blobs}=await store().list({prefix:''}); const out=[];
+  for(const b of blobs){
+    const p=b.key.split('/'); if(!MACHINES[p[0]]) continue;
+    const meta=await store().getMetadata(b.key).catch(()=>null);
+    const filename=p.slice(2).join('/')||p[1]||'';
+    const type=meta?.metadata?.type||p[1]||'';
+    const label=meta?.metadata?.label||filename;
+    const expiry=meta?.metadata?.expiry||parseExpiryFromFilename(filename);
+    out.push({key:b.key,id:p[0],type,label,filename,expiry});
+  }
+  return out;
+}
 
-function page(docs,drivers,msg=''){return shell(`<div class="box"><p><a href="/">← Accueil</a></p>${msg?`<p class="ok">${esc(msg)}</p>`:''}</div><div class="box"><h2>📄 Import d'un document</h2><form method="post" enctype="multipart/form-data"><label>Matériel</label><select name="id">${Object.values(MACHINES).map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select><label>Type</label><select name="type" id="doc-type">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select><label id="expiry-label">Date d'expiration</label><input id="expiry" type="date" name="expiry"><label>Fichier</label><input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" required><button>Charger le document</button></form></div><div class="box"><h2>📦 Import de tout le parc</h2><p class="muted">Sélectionne le dossier <strong>PARCMAT</strong>. Les sous-dossiers sont reconnus automatiquement.</p><label>Mot de passe administrateur</label><input id="bulk-password" type="password"><label>Dossier PARCMAT</label><input id="bulk-files" type="file" webkitdirectory directory multiple accept=".pdf,.jpg,.jpeg,.png"><button type="button" id="bulk-start">Importer tout le parc</button><div id="bulk-status" class="muted"></div><pre id="bulk-log"></pre></div><div class="box"><h2>🗑️ Documents du parc</h2><input id="doc-search" type="search" placeholder="Rechercher un matériel ou document...">${docs.map(d=>`<div class="doc-card searchable" data-search="${esc((MACHINES[d.id].name+' '+d.label).toLowerCase())}"><span><b>${esc(MACHINES[d.id].name)}</b><br><span class="muted">${esc(TYPES[d.type]?.label||d.type)}</span><br>${esc(d.label)}</span><form method="post" onsubmit="return confirm('Supprimer définitivement ce document ?')"><input type="hidden" name="action" value="delete-doc"><input type="hidden" name="key" value="${esc(d.key)}"><button class="danger">Supprimer</button></form></div>`).join('')||'<p>Aucun document.</p>'}</div><div class="box"><h2>👷 Gestion des chauffeurs</h2>${drivers.map(d=>`<p><b>${esc(d.name)}</b> — code personnel enregistré</p>`).join('')||'<p class="muted">Aucun chauffeur.</p>'}<form method="post"><input type="hidden" name="action" value="add-driver"><label>Nom du chauffeur</label><input name="name" required><label>Code personnel</label><input name="code" required><button>Ajouter le chauffeur</button></form></div>${drivers.map(d=>`<div class="box"><h3>📁 Documents — ${esc(d.name)}</h3><form method="post" enctype="multipart/form-data"><input type="hidden" name="action" value="upload-driver"><input type="hidden" name="driver" value="${d.id}"><label>Rubrique</label><select name="cat">${Object.entries(DRIVER_CATEGORIES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select><label>Fichier</label><input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" required><button>Charger</button></form></div>`).join('')}<script>const t=document.getElementById('doc-type'),e=document.getElementById('expiry'),no=${JSON.stringify([...NO_EXPIRY])};function sync(){e.style.display=no.includes(t.value)?'none':''}t.addEventListener('change',sync);sync();const q=document.getElementById('doc-search');q?.addEventListener('input',()=>document.querySelectorAll('.searchable').forEach(x=>x.style.display=!q.value||x.dataset.search.includes(q.value.toLowerCase())?'':'none'));</script><script src="/bulk-import.js"></script>`)}
+function groupOrder(){return [['camions','🚛 Camions'],['pelles','🚧 Matériel rail-route'],['vehicules','🚐 Véhicules']]}
+function buildTree(docs){
+  const byMachine=new Map(); for(const d of docs){if(!byMachine.has(d.id))byMachine.set(d.id,[]);byMachine.get(d.id).push(d)}
+  return groupOrder.map(([group,glabel])=>{
+    const machines=Object.values(MACHINES).filter(m=>m.group===group);
+    const machineHtml=machines.map(m=>{
+      const items=byMachine.get(m.id)||[];
+      const byType=new Map(); for(const d of items){if(!byType.has(d.type))byType.set(d.type,[]);byType.get(d.type).push(d)}
+      const types=[...expectedTypes(m),...items.map(x=>x.type).filter(t=>t&&!expectedTypes(m).includes(t)&&TYPES[t])];
+      const unique=[...new Set(types)];
+      const typeHtml=unique.map(t=>{
+        const list=byType.get(t)||[]; const label=TYPES[t]?.label||t;
+        const files=list.length?list.map(d=>`<div class="tree-file"><div class="tree-file-main"><span class="tree-file-icon">📄</span><div><a href="/document/${encodeURIComponent(d.id)}/${encodeURIComponent(d.type)}/${encodeURIComponent(d.filename)}" target="_blank" rel="noopener">${esc(d.filename)}</a><div class="tree-meta">${d.expiry?`Échéance : ${formatDate(d.expiry)}`:'Aucune échéance renseignée'} · ${statusHtml(d.type,d.expiry)}</div></div></div><form method="post" onsubmit="return confirm('Supprimer définitivement ce fichier ?')"><input type="hidden" name="action" value="delete-doc"><input type="hidden" name="key" value="${esc(d.key)}"><button class="danger small-btn">Supprimer</button></form></div>`).join(''):`<div class="tree-empty">Aucun fichier chargé</div>`;
+        return `<details class="tree-type"><summary><span>📁 ${esc(label)}</span><span class="tree-count">${list.length}</span></summary><div class="tree-files">${files}</div></details>`;
+      }).join('');
+      return `<details class="tree-machine"><summary><span><strong>${esc(m.name)}</strong> <span class="machine-id">(${esc(m.id)})</span></span><span class="tree-count">${items.length} fichier${items.length>1?'s':''}</span></summary><div class="tree-types">${typeHtml}</div></details>`;
+    }).join('');
+    return `<details class="tree-group" open><summary><span><strong>${glabel}</strong></span><span class="tree-count">${machines.length} matériels</span></summary><div class="tree-machines">${machineHtml}</div></details>`;
+  }).join('');
+}
+
+function page(docs,drivers,msg=''){
+  const tree=buildTree(docs);
+  const machineOptions=Object.values(MACHINES).map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('');
+  const typeOptions=Object.entries(TYPES).map(([k,v])=>`<option value="${k}">${esc(v.label)}</option>`).join('');
+  return shell(`
+  <div class="admin-toolbar"><a class="admin-back" href="/">← Accueil</a><form method="post"><input type="hidden" name="action" value="logout"><button class="secondary">Se déconnecter</button></form></div>
+  ${msg?`<div class="box"><p class="ok">${esc(msg)}</p></div>`:''}
+  <div class="box admin-upload">
+    <h2>📤 Ajouter un document</h2>
+    <form method="post" enctype="multipart/form-data" class="admin-upload-grid">
+      <div><label>Matériel</label><select name="id" required>${machineOptions}</select></div>
+      <div><label>Type de document</label><select name="type" required>${typeOptions}</select></div>
+      <div><label>Date d'échéance <span class="muted">(facultative si présente dans le nom)</span></label><input type="date" name="expiry"></div>
+      <div><label>Fichier</label><input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" required></div>
+      <div class="admin-upload-submit"><button>Charger le document</button></div>
+    </form>
+    <p class="muted">Les fichiers avec échéance restent entièrement visibles ici, avec leur nom de fichier et leur date.</p>
+  </div>
+  <div class="box">
+    <div class="admin-tree-head"><div><h2>🌳 Arborescence complète du parc</h2><p class="muted">Tous les matériels, tous les types de documents et tous les fichiers sont visibles, y compris les documents avec échéance.</p></div><input id="tree-search" type="search" placeholder="Rechercher un matériel ou un fichier…"></div>
+    <div id="tree" class="admin-tree">${tree}</div>
+  </div>
+  <div class="box">
+    <h2>👷 Gestion des chauffeurs</h2>
+    ${drivers.map(d=>`<p><b>${esc(d.name)}</b> — code personnel enregistré</p>`).join('')||'<p class="muted">Aucun chauffeur.</p>'}
+    <form method="post"><input type="hidden" name="action" value="add-driver"><label>Nom du chauffeur</label><input name="name" required><label>Code personnel</label><input name="code" required><button>Ajouter le chauffeur</button></form>
+  </div>
+  ${drivers.map(d=>`<div class="box"><h3>📁 Documents — ${esc(d.name)}</h3><form method="post" enctype="multipart/form-data"><input type="hidden" name="action" value="upload-driver"><input type="hidden" name="driver" value="${d.id}"><label>Rubrique</label><select name="cat">${Object.entries(DRIVER_CATEGORIES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select><label>Fichier</label><input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" required><button>Charger</button></form></div>`).join('')}
+  <script>
+  const q=document.getElementById('tree-search');
+  q.addEventListener('input',()=>{const v=q.value.toLowerCase().trim();document.querySelectorAll('.tree-machine').forEach(el=>{const hit=!v||el.textContent.toLowerCase().includes(v);el.style.display=hit?'':'none';if(v&&hit)el.open=true;});document.querySelectorAll('.tree-group').forEach(el=>{const visible=[...el.querySelectorAll('.tree-machine')].some(x=>x.style.display!=='none');el.style.display=visible?'':'none';if(v&&visible)el.open=true;});});
+  </script>`)
+}
 
 export default async req=>{
-  if(req.method==='GET'&&!adminOK(req)) return html(shell(`<div class="box"><h2>Accès administration</h2><form method="post"><input type="hidden" name="action" value="login"><label>Mot de passe administrateur</label><input type="password" name="password" required><button>Accéder</button></form></div>`));
-  if(req.method==='POST'&&!adminOK(req)){
-    const fd=await req.formData();
-    if(String(fd.get('action')||'')==='login'&&String(fd.get('password')||'')===(process.env.PARC_PASSWORD||'')) return html(shell('<div class="box"><p class="ok">Connexion réussie.</p><p><a href="/admin">Continuer</a></p></div>'),200,{'Set-Cookie':cookie('PARC_ADMIN',makeToken('ADMIN'))});
-    // Le bulk import envoie le mot de passe à chaque fichier et n'a pas besoin de session préalable.
-    if(String(fd.get('bulk')||'')==='1'&&String(fd.get('password')||'')===(process.env.PARC_PASSWORD||'')){
-      const id=String(fd.get('id')||'').toUpperCase(),type=String(fd.get('type')||''),file=fd.get('file');
-      if(!allowed(id,type)||!(file instanceof File)) return new Response('Erreur',{status:400});
-      const expiry=String(fd.get('expiry')||'')||expiryFor(type,file.name);const clean=file.name.replace(/[\\/]/g,'_');
-      await store().set(`${id}/${type}/${clean}`,await file.arrayBuffer(),{metadata:{type,label:file.name,expiry,uploadedAt:new Date().toISOString()}});return new Response('OK');
+  if(req.method==='GET'&&!adminOK(req)) return html(shell(`<div class="box admin-login"><h2>🔐 Accès administration</h2><p class="muted">Cette zone permet d'ajouter, consulter et supprimer les documents du parc.</p><form method="post"><input type="hidden" name="action" value="login"><label>Mot de passe administrateur</label><input type="password" name="password" autocomplete="current-password" required autofocus><button>Accéder</button></form></div>`));
+
+  if(req.method==='POST'){
+    const fd=await req.formData(); const action=String(fd.get('action')||'');
+    if(action==='login'){
+      if(String(fd.get('password')||'')===(process.env.PARC_PASSWORD||'')) return html(shell('<div class="box"><p class="ok">Connexion réussie.</p><p><a href="/admin">Ouvrir l’administration</a></p></div>'),200,{'Set-Cookie':cookie('PARC_ADMIN',makeToken('ADMIN'))});
+      return html(shell('<div class="box"><p class="bad">Mot de passe incorrect.</p><p><a href="/admin">Réessayer</a></p></div>'),401);
     }
-    return html(shell('<div class="box"><p class="bad">Mot de passe incorrect.</p></div>'),401);
-  }
-  const fd=req.method==='POST'?await req.formData():null;
-  if(fd){const action=String(fd.get('action')||'');
-    if(action==='delete-doc'){const key=String(fd.get('key')||'');if(key)await store().delete(key);return html(shell('<div class="box"><p class="ok">Document supprimé.</p><p><a href="/admin">Retour à l’administration</a></p></div>'))}
-    if(action==='add-driver'){const name=String(fd.get('name')||'').trim(),code=String(fd.get('code')||'').trim();if(!name||!code)return html(shell('<p class="bad">Nom et code obligatoires.</p>'),400);const id=crypto.randomUUID();await driverStore().set(`driver/${id}.json`,JSON.stringify({id,name,codeHash:hashSecret(code),enabled:true}),{metadata:{type:'driver'}});return html(shell('<div class="box"><p class="ok">Chauffeur ajouté.</p><p><a href="/admin">Retour</a></p></div>'))}
-    if(action==='upload-driver'){const did=String(fd.get('driver')||''),cat=String(fd.get('cat')||'divers'),file=fd.get('file');if(!did||!DRIVER_CATEGORIES[cat]||!(file instanceof File))return html(shell('<p class="bad">Données invalides.</p>'),400);await driverStore().set(`docs/${did}/${cat}/${file.name.replace(/[\\/]/g,'_')}`,await file.arrayBuffer(),{metadata:{label:DRIVER_CATEGORIES[cat].label,contentType:file.type,uploadedAt:new Date().toISOString()}});return html(shell('<div class="box"><p class="ok">Document chauffeur chargé.</p><p><a href="/admin">Retour</a></p></div>'))}
+    if(!adminOK(req)) return html(shell('<div class="box"><p class="bad">Session administrateur expirée.</p></div>'),403);
+    if(action==='logout') return html(shell('<div class="box"><p class="ok">Vous êtes déconnecté.</p><p><a href="/">Retour à l’accueil</a></p></div>'),200,{'Set-Cookie':clearCookie('PARC_ADMIN')});
+    if(action==='delete-doc'){
+      const key=String(fd.get('key')||''); if(key) await store().delete(key);
+      return html(shell('<div class="box"><p class="ok">Document supprimé.</p><p><a href="/admin">Retour à l’administration</a></p></div>'));
+    }
+    if(action==='add-driver'){
+      const name=String(fd.get('name')||'').trim(),code=String(fd.get('code')||'').trim();
+      if(!name||!code)return html(shell('<p class="bad">Nom et code obligatoires.</p>'),400);
+      const id=crypto.randomUUID(); await driverStore().set(`driver/${id}.json`,JSON.stringify({id,name,codeHash:hashSecret(code),enabled:true}),{metadata:{type:'driver'}});
+      return html(shell('<div class="box"><p class="ok">Chauffeur ajouté.</p><p><a href="/admin">Retour</a></p></div>'));
+    }
+    if(action==='upload-driver'){
+      const did=String(fd.get('driver')||''),cat=String(fd.get('cat')||'divers'),file=fd.get('file');
+      if(!did||!DRIVER_CATEGORIES[cat]||!(file instanceof File))return html(shell('<p class="bad">Données invalides.</p>'),400);
+      await driverStore().set(`docs/${did}/${cat}/${file.name.replace(/[\\/]/g,'_')}`,await file.arrayBuffer(),{metadata:{label:DRIVER_CATEGORIES[cat].label,contentType:file.type,uploadedAt:new Date().toISOString()}});
+      return html(shell('<div class="box"><p class="ok">Document chauffeur chargé.</p><p><a href="/admin">Retour</a></p></div>'));
+    }
     const id=String(fd.get('id')||'').toUpperCase(),type=String(fd.get('type')||''),file=fd.get('file');
-    if(file instanceof File){if(!allowed(id,type))return html(shell('<p class="bad">Ce type de document ne correspond pas à ce matériel.</p>'),400);let expiry=String(fd.get('expiry')||'');if(!expiry)expiry=expiryFor(type,file.name);const clean=file.name.replace(/[\\/]/g,'_');await store().set(`${id}/${type}/${clean}`,await file.arrayBuffer(),{metadata:{type,label:file.name,expiry,uploadedAt:new Date().toISOString()}});return html(shell(`<div class="box"><p class="ok">Document chargé.</p><p><a href="/machine/${id}">Voir le matériel</a></p></div>`))}
+    if(file instanceof File){
+      if(!MACHINES[id]||!TYPES[type]) return html(shell('<p class="bad">Matériel ou type de document invalide.</p>'),400);
+      let expiry=String(fd.get('expiry')||''); if(!expiry)expiry=iso(parseDate(file.name))||parseExpiryFromFilename(file.name);
+      const clean=file.name.replace(/[\\/]/g,'_');
+      await store().set(`${id}/${type}/${clean}`,await file.arrayBuffer(),{metadata:{type,label:file.name,expiry,uploadedAt:new Date().toISOString()}});
+      return html(shell(`<div class="box"><p class="ok">Document chargé pour ${esc(MACHINES[id].name)}.</p><p><a href="/admin">Retour à l’administration</a></p></div>`));
+    }
   }
   return html(page(await docsList(),await driverList()));
 };
