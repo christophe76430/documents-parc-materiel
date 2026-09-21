@@ -27,9 +27,9 @@ export default async req=>{
   if(req.method==='GET'&&!adminOK(req)) return html(shell(`<div class="box"><h2>Accès administration</h2><form method="post"><input type="hidden" name="action" value="login"><label>Mot de passe administrateur</label><input type="password" name="password" required><button>Accéder</button></form></div>`));
   if(req.method==='POST'&&!adminOK(req)){
     const fd=await req.formData();
-    if(String(fd.get('action')||'')==='login'&&String(fd.get('password')||'')===(process.env.PARC_PASSWORD || '76430')) { const token=makeToken('ADMIN'); return html(page(await docsList(),await driverList(),'Connexion administrateur réussie.'),200,{'Set-Cookie':cookie('PARC_ADMIN',token)}); }
+    if(String(fd.get('action')||'')==='login'&&String(fd.get('password')||'')===(process.env.PARC_PASSWORD || '')) { const token=makeToken('ADMIN'); return html(page(await docsList(),await driverList(),'Connexion administrateur réussie.'),200,{'Set-Cookie':cookie('PARC_ADMIN',token)}); }
     // Le bulk import envoie le mot de passe à chaque fichier et n'a pas besoin de session préalable.
-    if(String(fd.get('bulk')||'')==='1'&&String(fd.get('password')||'')===(process.env.PARC_PASSWORD || '76430')){
+    if(String(fd.get('bulk')||'')==='1'&&String(fd.get('password')||'')===(process.env.PARC_PASSWORD || '')){
       const id=String(fd.get('id')||'').toUpperCase(),type=String(fd.get('type')||''),file=fd.get('file');
       if(!allowed(id,type)||!(file instanceof File)) return new Response('Erreur',{status:400});
       const expiry=String(fd.get('expiry')||'')||expiryFor(type,file.name);const clean=file.name.replace(/[\\/]/g,'_');
