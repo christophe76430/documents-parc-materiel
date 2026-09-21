@@ -35,9 +35,10 @@ export default async()=>{
     const date=new Date(`${expiry}T23:59:59`);
     if(Number.isNaN(date.getTime()))return null;
     const days=Math.ceil((date-new Date())/86400000);
-    // Accueil: upcoming deadlines within the next 90 days, sorted by urgency.
-    if(days<0||days>90)return null;
     const s=status(expiry);
+    // Les échéances futures et dépassées sont conservées pour l'accueil.
+    // L'interface les sépare en deux tableaux.
+
     return {
       id,
       name:MACHINES[id].name,
@@ -50,6 +51,8 @@ export default async()=>{
       priorityLabel:s.class==='red'?'Urgent':s.class==='orange'?'Échéance proche':'Valide'
     };
   }));
-  const items=rows.filter(Boolean).sort((a,b)=>a.priority-b.priority||a.days-b.days||a.name.localeCompare(b.name,'fr'));
-  return json({items});
+  const all=rows.filter(Boolean);
+  const items=all.filter(x=>x.days>=0).sort((a,b)=>a.priority-b.priority||a.days-b.days||a.name.localeCompare(b.name,'fr'));
+  const overdue=all.filter(x=>x.days<0).sort((a,b)=>a.days-b.days||a.name.localeCompare(b.name,'fr')).map(x=>({...x, priorityLabel:'Dépassée'}));
+  return json({items,overdue});
 };

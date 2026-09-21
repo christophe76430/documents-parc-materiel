@@ -103,3 +103,11 @@ main:not(.home-main):not(.category-main){max-width:1100px;margin:38px auto;paddi
 .deadline-table-wrap thead th{position:sticky;top:0;z-index:2;background:#edf4fa;}
 .deadline-table-wrap tbody tr{height:44px;}
 @media(max-width:650px){.deadline-table-wrap{height:500px;max-height:500px;overflow-y:auto;overflow-x:auto;}.deadline-table-wrap table{min-width:850px;}}
+
+/* Échéances dépassées */
+.overdue-deadlines{margin-top:18px}
+.overdue-title{color:#b00020!important}
+.overdue-table-wrap{max-height:360px;height:360px}
+.overdue-table-wrap thead th{background:#fff0f2}
+.overdue-table-wrap td{background:#fffafa}
+@media(max-width:650px){.overdue-table-wrap{height:360px;max-height:360px}}
