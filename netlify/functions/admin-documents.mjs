@@ -177,7 +177,7 @@ function documentsPage(docs, message = '') {
     </div>
 
     <p style="margin-top:25px">
-      <a href="/.netlify/functions/admin">← Retour à l'administration</a>
+      <a href="/admin">← Retour à l'administration</a>
     </p>
 
     <script>

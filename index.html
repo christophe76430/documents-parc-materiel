@@ -13,7 +13,7 @@
     </div>
     <div class="home-header-right">
       <img class="home-iso-logo" src="/assets/iso.png" alt="ISO">
-      <a class="home-admin-link" href="/.netlify/functions/admin">🔐 Administration</a>
+      <a class="home-admin-link" href="/admin">🔐 Administration</a>
     </div>
   </div>
 </header>
@@ -46,7 +46,7 @@
 
   <footer class="site-footer">
     <span>TRANSPORTS HAUTE NORMANDIE &nbsp; | &nbsp; Le Havre - Normandie</span>
-    <span>Copyright 2026 &nbsp; | &nbsp; <a href="/.netlify/functions/admin" class="admin-link">🔐 Administration</a></span>
+    <span>Copyright 2026 &nbsp; | &nbsp; <a href="/admin" class="admin-link">🔐 Administration</a></span>
   </footer>
 </main>
 <script>
@@ -58,12 +58,12 @@ fetch('/api/dashboard').then(r=>r.json()).then(d=>{
  if(!items.length){root.innerHTML='<p class="muted">Aucune échéance à venir.</p>';}
  else {
    const rows=items.map(x=>`<tr><td><strong>${esc(x.name)}</strong></td><td>${esc(x.category)}</td><td>${esc(x.label)}</td><td>${esc(x.expiry)}</td><td class="days ${x.status.class}">${x.days} jours</td><td><span class="table-status"><span class="dot ${x.status.class}"></span>${esc(x.priorityLabel)}</span></td></tr>`).join('');
-   root.innerHTML=`<div class="deadline-table-wrap"><table><thead><tr><th>Matériel</th><th>Type</th><th>Document</th><th>Date d’échéance</th><th>Jours restants</th><th>Statut</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+   root.innerHTML=`<div class="deadline-fixed-head"><table><thead><tr><th>Matériel</th><th>Type</th><th>Document</th><th>Date d’échéance</th><th>Jours restants</th><th>Statut</th></tr></thead></table></div><div class="deadline-scroll-body"><table><tbody>${rows}</tbody></table></div>`;
  }
  if(!overdue.length){document.getElementById('overdue-section').style.display='none';}
  else {
    const rows=overdue.map(x=>`<tr><td><strong>${esc(x.name)}</strong></td><td>${esc(x.category)}</td><td>${esc(x.label)}</td><td>${esc(x.expiry)}</td><td class="days red">${Math.abs(x.days)} jours de retard</td><td><span class="table-status red"><span class="dot red"></span>Urgent</span></td></tr>`).join('');
-   overRoot.innerHTML=`<div class="deadline-table-wrap overdue-table-wrap"><table><thead><tr><th>Matériel</th><th>Type</th><th>Document</th><th>Date d’échéance</th><th>Retard</th><th>Statut</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+   overRoot.innerHTML=`<div class="deadline-fixed-head overdue-fixed-head"><table><thead><tr><th>Matériel</th><th>Type</th><th>Document</th><th>Date d’échéance</th><th>Retard</th><th>Statut</th></tr></thead></table></div><div class="deadline-scroll-body overdue-scroll-body"><table><tbody>${rows}</tbody></table></div>`;
  }
 }).catch(()=>{document.getElementById('deadline-table').innerHTML='<p class="bad">Impossible de charger les échéances.</p>';document.getElementById('overdue-table').innerHTML='';});
 </script>

@@ -177,46 +177,56 @@ main:not(.home-main):not(.category-main){max-width:1100px;margin:38px auto;paddi
 .home-header-right, .home-admin-link { position: relative; z-index: 20; }
 .home-admin-link { cursor: pointer; pointer-events: auto; }
 
-/* V22 — administration directe + tableaux d'échéances avec en-têtes fixes */
-.deadline-table-wrap {
-  height: 500px !important;
-  max-height: 500px !important;
-  overflow-y: scroll !important;
-  overflow-x: auto !important;
-  position: relative !important;
-  overscroll-behavior: contain;
+
+/* V23 — solution robuste : en-tête séparé du corps, donc toujours fixe */
+.deadline-fixed-head {
+  overflow:hidden;
+  border:1px solid #dfe8f1;
+  border-bottom:0;
+  border-radius:10px 10px 0 0;
+  background:#edf4fa;
 }
-.deadline-table-wrap table {
-  width: 100%;
-  min-width: 850px;
-  border-collapse: separate !important;
-  border-spacing: 0;
-  margin: 0 !important;
+.deadline-scroll-body {
+  height:500px;
+  overflow-y:auto;
+  overflow-x:auto;
+  border:1px solid #dfe8f1;
+  border-radius:0 0 10px 10px;
+  background:#fff;
 }
-.deadline-table-wrap thead {
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 100 !important;
+.deadline-fixed-head table, .deadline-scroll-body table {
+  width:100%;
+  min-width:850px;
+  table-layout:fixed;
+  border-collapse:collapse;
+  margin:0 !important;
 }
-.deadline-table-wrap thead th {
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 101 !important;
-  background: #edf4fa !important;
-  box-shadow: 0 2px 0 #cfddea !important;
+.deadline-fixed-head th {
+  background:#edf4fa !important;
+  color:#29496b;
+  font-size:14px;
+  padding:8px 12px;
+  border:1px solid #dbe7f2;
+  text-align:left;
 }
-.overdue-table-wrap {
-  height: 360px !important;
-  max-height: 360px !important;
+.deadline-scroll-body td {
+  font-size:14px;
+  color:#29496b;
+  background:#fff;
+  padding:8px 12px;
+  border:1px solid #e1eaf2;
 }
-.overdue-table-wrap thead th {
-  background: #fdecec !important;
-  color: #b91c1c !important;
-}
-.deadline-table-wrap tbody td {
-  background: #fff;
-}
+.deadline-fixed-head th:nth-child(1), .deadline-scroll-body td:nth-child(1){width:28%;}
+.deadline-fixed-head th:nth-child(2), .deadline-scroll-body td:nth-child(2){width:15%;}
+.deadline-fixed-head th:nth-child(3), .deadline-scroll-body td:nth-child(3){width:20%;}
+.deadline-fixed-head th:nth-child(4), .deadline-scroll-body td:nth-child(4){width:14%;}
+.deadline-fixed-head th:nth-child(5), .deadline-scroll-body td:nth-child(5){width:13%;}
+.deadline-fixed-head th:nth-child(6), .deadline-scroll-body td:nth-child(6){width:10%;}
+.overdue-fixed-head {background:#fdecec;}
+.overdue-fixed-head th {background:#fdecec !important;color:#b91c1c !important;}
+.overdue-scroll-body {height:360px;}
 @media(max-width:650px){
-  .deadline-table-wrap { height: 500px !important; max-height: 500px !important; }
-  .overdue-table-wrap { height: 360px !important; max-height: 360px !important; }
+ .deadline-scroll-body{height:500px;}
+ .overdue-scroll-body{height:360px;}
+ .deadline-fixed-head table,.deadline-scroll-body table{min-width:850px;}
 }
