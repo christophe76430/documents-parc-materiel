@@ -117,37 +117,38 @@ export default async req=>{
 
       let newExists=false;
       try{
-        const meta=await store().getMetadata(newKey);
+        const meta=await store().getMetadata(newKey,{consistency:'strong'});
         newExists=!!meta;
       }catch{}
       if(!newExists){
         return html(shell(`<div class="box"><h2>Erreur de remplacement</h2><p class="bad">Le nouveau fichier n’a pas été enregistré dans Netlify Blobs.</p><p>Ancien conservé : ${esc(oldLabel)}</p><p>Nouveau demandé : ${esc(newLabel)}</p><p><a href="/admin">← Retour à l'administration</a></p></div>`),500);
       }
 
-      // Vérification supplémentaire par la liste du préfixe matériel/type.
-      const listed=await store().list({prefix:`${id}/${type}/`});
-      const newListed=listed.blobs.some(b=>b.key===newKey);
-      if(!newListed){
-        return html(shell(`<div class="box"><h2>Erreur de remplacement</h2><p class="bad">Le nouveau fichier a été écrit mais n'apparaît pas dans la liste du stockage.</p><p>Ancien conservé : ${esc(oldLabel)}</p><p>Nouveau demandé : ${esc(newLabel)}</p><p><a href="/admin">← Retour à l'administration</a></p></div>`),500);
-      }
+      // V35 : ne pas utiliser list() comme preuve immédiate d'écriture.
+      // Netlify documente que list() peut être éventuellement cohérent, alors que
+      // getMetadata/getWithMetadata permet de vérifier directement la clé.
+      // Le nouveau blob a déjà été vérifié ci-dessus par getMetadata.
 
       // Seulement maintenant, supprimer l'ancien fichier.
       if(oldKey && oldKey!==newKey) await store().delete(oldKey);
 
       // Vérifier que l'ancien a disparu et que le nouveau est toujours présent.
       let oldGone=true,newStillThere=true;
-      if(oldKey && oldKey!==newKey){ try{ await store().getMetadata(oldKey); oldGone=false; }catch{} }
-      try{ await store().getMetadata(newKey); }catch{ newStillThere=false; }
+      if(oldKey && oldKey!==newKey){ try{ const m=await store().getMetadata(oldKey,{consistency:'strong'}); if(m) oldGone=false; }catch{} }
+      try{ const m=await store().getMetadata(newKey,{consistency:'strong'}); if(!m) newStillThere=false; }catch{ newStillThere=false; }
       if(!oldGone || !newStillThere){
         return html(shell(`<div class="box"><h2>Remplacement partiellement effectué</h2><p class="bad">Le nouveau fichier a été enregistré, mais la vérification finale n'est pas conforme.</p><p>Ancien : ${esc(oldLabel)}</p><p>Nouveau : ${esc(newLabel)}</p><p><a href="/admin">← Retour à l'administration</a></p></div>`),500);
       }
 
       // Relire le store après l'opération pour afficher exactement la nouvelle clé.
-      const refreshedDocs=await docsList();
+      let refreshedDocs=await docsList();
+      // list() peut encore être temporairement en retard. Reflète donc immédiatement
+      // le résultat confirmé par getMetadata dans la page de réponse.
+      refreshedDocs=refreshedDocs.filter(d=>d.key!==oldKey && d.key!==newKey);
+      refreshedDocs.push({key:newKey,id,type,label:newLabel});
+      refreshedDocs.sort((a,b)=>`${MACHINES[a.id].name}${a.label}`.localeCompare(`${MACHINES[b.id].name}${b.label}`,'fr'));
       const refreshedDrivers=await driverList();
-      const replaced=refreshedDocs.find(d=>d.key===newKey);
-      const shownName=replaced?.label||newLabel;
-      return html(page(refreshedDocs,refreshedDrivers,`Document remplacé : ${oldLabel} → ${shownName}. L’ancien fichier a été supprimé et le nouveau fichier est vérifié dans Netlify Blobs.`));
+      return html(page(refreshedDocs,refreshedDrivers,`Document remplacé : ${oldLabel} → ${newLabel}. L’ancien fichier a été supprimé et le nouveau fichier est vérifié dans Netlify Blobs.`));
     }
     if(action==='delete-doc'){
       const key=String(fd.get('key')||'');if(key)await store().delete(key);
