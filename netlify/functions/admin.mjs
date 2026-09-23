@@ -108,9 +108,25 @@ export default async req=>{
           expiry=String(meta?.metadata?.expiry||meta?.expiry||'');
         }catch{}
       }
-      await store().set(newKey,await file.arrayBuffer(),{metadata:{type,label:file.name,expiry,uploadedAt:new Date().toISOString(),replacedFrom:oldKey}});
-      if(newKey!==oldKey) await store().delete(oldKey);
-      return html(page(await docsList(),await driverList(),'Document remplacé : l’ancien fichier a été supprimé.'));
+      const bytes=await file.arrayBuffer();
+      const oldLabel=oldKey.split('/').slice(2).join('/') || oldKey;
+      const newLabel=clean;
+      // Remplacement strict : supprimer l'ancienne clé puis écrire la nouvelle clé avec le nom exact du fichier choisi.
+      // Cela évite qu'une ancienne entrée soit réutilisée lorsque le nom change.
+      if(oldKey) await store().delete(oldKey);
+      await store().set(newKey,bytes,{metadata:{type,label:file.name,expiry,uploadedAt:new Date().toISOString(),replacedFrom:oldKey}});
+      // Vérification réelle du blob nouvellement créé.
+      let verified=false;
+      try{ await store().getMetadata(newKey); verified=true; }catch{}
+      if(!verified){
+        return html(shell(`<div class="box"><h2>Erreur de remplacement</h2><p class="bad">Le nouveau fichier n’a pas pu être vérifié dans le stockage.</p><p>Ancien : ${esc(oldLabel)}</p><p>Nouveau : ${esc(newLabel)}</p><p><a href="/admin">← Retour à l'administration</a></p></div>`),500);
+      }
+      // Relire le store après l'opération pour afficher exactement la nouvelle clé.
+      const refreshedDocs=await docsList();
+      const refreshedDrivers=await driverList();
+      const replaced=refreshedDocs.find(d=>d.key===newKey);
+      const shownName=replaced?.label||newLabel;
+      return html(page(refreshedDocs,refreshedDrivers,`Document remplacé : ${oldLabel} → ${shownName}. L’ancien fichier a été supprimé.`));
     }
     if(action==='delete-doc'){
       const key=String(fd.get('key')||'');if(key)await store().delete(key);
