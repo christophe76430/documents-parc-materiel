@@ -108,9 +108,53 @@ export default async req=>{
           expiry=String(meta?.metadata?.expiry||meta?.expiry||'');
         }catch{}
       }
-      await store().set(newKey,await file.arrayBuffer(),{metadata:{type,label:file.name,expiry,uploadedAt:new Date().toISOString(),replacedFrom:oldKey}});
-      if(newKey!==oldKey) await store().delete(oldKey);
-      return html(page(await docsList(),await driverList(),'Document remplacé : l’ancien fichier a été supprimé.'));
+      const bytes=await file.arrayBuffer();
+      const oldLabel=oldKey.split('/').slice(2).join('/') || oldKey;
+      const newLabel=clean;
+      // V34 : écrire et vérifier le nouveau blob AVANT de supprimer l'ancien.
+      // Ainsi, si l'écriture échoue, l'ancien document reste intact.
+      const writeResult=await store().set(newKey,bytes,{metadata:{type,label:file.name,expiry,uploadedAt:new Date().toISOString(),replacedFrom:oldKey}});
+
+      // Vérification forte du nouveau blob : existence + contenu réel + taille.
+      let newData=null;
+      let newMeta=null;
+      try{
+        const checked=await store().getWithMetadata(newKey,{consistency:'strong',type:'arrayBuffer'});
+        if(checked){ newData=checked.data; newMeta=checked; }
+      }catch{}
+      if(!newData){
+        return html(shell(`<div class="box"><h2>Erreur de remplacement</h2><p class="bad">Le nouveau fichier n’a pas été retrouvé après l’écriture dans Netlify Blobs.</p><p>Clé demandée : <code>${esc(newKey)}</code></p><p>Ancien conservé : ${esc(oldLabel)}</p><p>Nouveau demandé : ${esc(newLabel)}</p><p><a href="/admin">← Retour à l'administration</a></p></div>`),500);
+      }
+      const newSize=newData.byteLength;
+      if(newSize!==bytes.byteLength){
+        return html(shell(`<div class="box"><h2>Erreur de remplacement</h2><p class="bad">Le nouveau fichier a été retrouvé mais sa taille ne correspond pas.</p><p>Écrit : ${bytes.byteLength} octets — relu : ${newSize} octets.</p><p>Clé : <code>${esc(newKey)}</code></p><p>Ancien conservé : ${esc(oldLabel)}</p><p><a href="/admin">← Retour à l'administration</a></p></div>`),500);
+      }
+
+      // V35 : ne pas utiliser list() comme preuve immédiate d'écriture.
+      // Netlify documente que list() peut être éventuellement cohérent, alors que
+      // getMetadata/getWithMetadata permet de vérifier directement la clé.
+      // Le nouveau blob a déjà été vérifié ci-dessus par getMetadata.
+
+      // Seulement maintenant, supprimer l'ancien fichier.
+      if(oldKey && oldKey!==newKey) await store().delete(oldKey);
+
+      // Vérifier que l'ancien a disparu et que le nouveau est toujours présent, contenu compris.
+      let oldGone=true,newStillThere=true;
+      if(oldKey && oldKey!==newKey){ try{ const m=await store().getMetadata(oldKey,{consistency:'strong'}); if(m) oldGone=false; }catch{} }
+      try{ const checked=await store().getWithMetadata(newKey,{consistency:'strong',type:'arrayBuffer'}); if(!checked || !checked.data || checked.data.byteLength!==bytes.byteLength) newStillThere=false; }catch{ newStillThere=false; }
+      if(!oldGone || !newStillThere){
+        return html(shell(`<div class="box"><h2>Remplacement partiellement effectué</h2><p class="bad">La vérification finale n'est pas conforme.</p><p>Ancien supprimé : ${oldGone?'oui':'NON'}</p><p>Nouveau présent et taille correcte : ${newStillThere?'oui':'NON'}</p><p>Ancien : ${esc(oldLabel)}</p><p>Nouveau : ${esc(newLabel)}</p><p><a href="/admin">← Retour à l'administration</a></p></div>`),500);
+      }
+
+      // Relire le store après l'opération pour afficher exactement la nouvelle clé.
+      let refreshedDocs=await docsList();
+      // list() peut encore être temporairement en retard. Reflète donc immédiatement
+      // le résultat confirmé par getMetadata dans la page de réponse.
+      refreshedDocs=refreshedDocs.filter(d=>d.key!==oldKey && d.key!==newKey);
+      refreshedDocs.push({key:newKey,id,type,label:newLabel});
+      refreshedDocs.sort((a,b)=>`${MACHINES[a.id].name}${a.label}`.localeCompare(`${MACHINES[b.id].name}${b.label}`,'fr'));
+      const refreshedDrivers=await driverList();
+      return html(page(refreshedDocs,refreshedDrivers,`Document remplacé : ${oldLabel} → ${newLabel}. Vérification Blobs OK : ${newSize} octets écrits et relus. Ancien supprimé.`));
     }
     if(action==='delete-doc'){
       const key=String(fd.get('key')||'');if(key)await store().delete(key);
