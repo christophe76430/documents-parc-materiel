@@ -56,12 +56,12 @@ fetch('/api/dashboard').then(r=>r.json()).then(d=>{
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  if(!items.length){root.innerHTML='<p class="muted">Aucune échéance à venir.</p>';}
  else {
-   const rows=items.map(x=>`<tr><td><strong>${esc(x.name)}</strong></td><td>${esc(x.category)}</td><td>${esc(x.label)}</td><td>${esc(x.expiry)}</td><td class="days ${x.status.class}">${x.days} jours</td><td><span class="table-status"><span class="dot ${x.status.class}"></span>${esc(x.priorityLabel)}</span></td></tr>`).join('');
+   const rows=items.map(x=>`<tr><td><strong>${esc(x.name)}</strong></td><td>${esc(x.category)}</td><td>${esc(x.label)}${x.kind==='extinguisher'?' 🧯':''}</td><td>${esc(x.expiry)}</td><td class="days ${x.status.class}">${x.days} jours</td><td><span class="table-status"><span class="dot ${x.status.class}"></span>${esc(x.priorityLabel)}</span></td></tr>`).join('');
    root.innerHTML=`<div class="deadline-fixed-head"><table><thead><tr><th>Matériel</th><th>Type</th><th>Document</th><th>Date d’échéance</th><th>Jours restants</th><th>Statut</th></tr></thead></table></div><div class="deadline-scroll-body"><table><tbody>${rows}</tbody></table></div>`;
  }
  if(!overdue.length){document.getElementById('overdue-section').style.display='none';}
  else {
-   const rows=overdue.map(x=>`<tr><td><strong>${esc(x.name)}</strong></td><td>${esc(x.category)}</td><td>${esc(x.label)}</td><td>${esc(x.expiry)}</td><td class="days red">${Math.abs(x.days)} jours de retard</td><td><span class="table-status red"><span class="dot red"></span>Urgent</span></td></tr>`).join('');
+   const rows=overdue.map(x=>`<tr><td><strong>${esc(x.name)}</strong></td><td>${esc(x.category)}</td><td>${esc(x.label)}${x.kind==='extinguisher'?' 🧯':''}</td><td>${esc(x.expiry)}</td><td class="days red">${Math.abs(x.days)} jours de retard</td><td><span class="table-status red"><span class="dot red"></span>Urgent</span></td></tr>`).join('');
    overRoot.innerHTML=`<div class="deadline-fixed-head overdue-fixed-head"><table><thead><tr><th>Matériel</th><th>Type</th><th>Document</th><th>Date d’échéance</th><th>Retard</th><th>Statut</th></tr></thead></table></div><div class="deadline-scroll-body overdue-scroll-body"><table><tbody>${rows}</tbody></table></div>`;
  }
 }).catch(()=>{document.getElementById('deadline-table').innerHTML='<p class="bad">Impossible de charger les échéances.</p>';document.getElementById('overdue-table').innerHTML='';});
