@@ -5,7 +5,6 @@ import machines from '../../machines.json' with { type: 'json' };
 export const STORE = 'parc-documents';
 export const DRIVER_STORE = 'parc-chauffeurs';
 export const STATUS_STORE = 'parc-materiel-status';
-export const EXTINGUISHER_STORE = 'parc-extincteurs';
 export const REGION = 'eu-central-1';
 export const TTL = 8 * 60 * 60 * 1000;
 
@@ -46,21 +45,6 @@ export function driverStore(){
 }
 export function statusStore(){
   return getStore({name:STATUS_STORE,region:REGION,consistency:'strong'});
-}
-export function extinguisherStore(){
-  return getStore({name:EXTINGUISHER_STORE,region:REGION,consistency:'strong'});
-}
-export function hasExtinguisher(id){ return !!MACHINES[id] && (MACHINES[id].group==='pelles' || /^T\d+$/.test(id)); }
-export async function getExtinguisherDates(){
-  const out={};
-  for(const id of Object.keys(MACHINES)){
-    if(!hasExtinguisher(id)) continue;
-    try{
-      const r=await extinguisherStore().get(`machine/${id}.json`,{type:'json',consistency:'strong'});
-      if(r?.expiry) out[id]=String(r.expiry);
-    }catch{}
-  }
-  return out;
 }
 export async function getMachineStatus(id){
   const key=`machine/${id}.json`;

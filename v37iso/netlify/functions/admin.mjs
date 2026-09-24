@@ -5,7 +5,6 @@ import machines from '../../machines.json' with { type: 'json' };
 const STORE = 'parc-documents';
 const DRIVER_STORE = 'parc-chauffeurs';
 const STATUS_STORE = 'parc-materiel-status';
-const EXTINGUISHER_STORE = 'parc-extincteurs';
 const REGION = 'eu-central-1';
 const TTL = 8 * 60 * 60 * 1000;
 
@@ -38,9 +37,6 @@ const AGR = new Set(['P16','P17','P18','P19','P20','P21','P24','P25','RRA319','R
 const store = () => getStore({name:STORE,region:REGION,consistency:'strong'});
 const driverStore = () => getStore({name:DRIVER_STORE,region:REGION,consistency:'strong'});
 const statusStore = () => getStore({name:STATUS_STORE,region:REGION,consistency:'strong'});
-const extinguisherStore = () => getStore({name:EXTINGUISHER_STORE,region:REGION,consistency:'strong'});
-const hasExtinguisher = id => !!MACHINES[id] && (MACHINES[id].group==='pelles' || /^T\d+$/.test(id));
-async function getExtinguisherDates(){const out={};for(const id of Object.keys(MACHINES)){if(!hasExtinguisher(id))continue;try{const r=await extinguisherStore().get(`machine/${id}.json`,{type:'json',consistency:'strong'});if(r?.expiry)out[id]=String(r.expiry);}catch{}}return out;}
 const secret = () => process.env.PARC_PASSWORD || '';
 
 function esc(s){return String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
@@ -81,12 +77,10 @@ async function machineStatuses(){
 async function driverList(){const {blobs}=await driverStore().list({prefix:'driver/'});const values=await Promise.all(blobs.map(b=>driverStore().get(b.key,{type:'json'}).catch(()=>null)));return values.filter(Boolean);}
 function shell(body){return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration THN</title><link rel="stylesheet" href="/style.css"><style>.doc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.replace-form{margin:0}.replace{background:#1976d2;color:#fff}.doc-card form{margin:0}.doc-card button{margin:0}</style></head><body><main>${body}</main></body></html>`;}
 function errorPage(e){return shell(`<div class="box"><h2>Erreur Administration</h2><p class="bad">${esc(e?.message||String(e))}</p><p><a href="/admin.html">← Retour à l'accès administration</a></p></div>`);}
-function page(docs,drivers,msg='',statuses={},extDates={}){
+function page(docs,drivers,msg='',statuses={}){
   const groupLabels={camions:'Camions',pelles:'Matériel rail-route',vehicules:'Véhicules'};
   const fleetHtml=Object.entries(machines).map(([group,items])=>`<div class="machine-status-group"><h3>${esc(groupLabels[group]||group)}</h3>${items.map(([id,name])=>{
     const enabled=statuses[id]!==false;
-    const extDate=extDates[id]||'';
-    const extValue=/^\d{4}-\d{2}$/.test(extDate)?extDate:'';
     const parts=name.split(' - ');
     const code=parts[0]||id;
     const desc=parts.slice(1).join(' - ')||name;
@@ -104,7 +98,6 @@ function page(docs,drivers,msg='',statuses={},extDates={}){
       </div>
       <div class="machine-status-name"><strong>${esc(code)}</strong><span>${esc(desc)}</span></div>
       <div class="machine-status-state">${enabled?'ACTIF — échéances prises en compte':'HORS SERVICE — échéances masquées'}</div>
-      ${hasExtinguisher(id)?`<form method="post" action="/.netlify/functions/admin" class="extinguisher-form"><input type="hidden" name="action" value="set-extinguisher"><input type="hidden" name="id" value="${esc(id)}"><label class="extinguisher-label"><img src="/assets/extincteur.svg" alt="Extincteur"> Extincteur</label><input type="month" name="expiryMonth" value="${esc(extValue)}" title="Mois et année d’échéance de l’extincteur"><button type="submit">Enregistrer</button></form>`:''}
     </div>`;
   }).join('')}</div>`).join('');
   return shell(`<div class="box"><p><a href="/">← Accueil</a></p>${msg?`<p class="ok">${esc(msg)}</p>`:''}</div>
@@ -120,7 +113,7 @@ export default async req=>{
   try{
     if(req.method==='GET'){
       if(!isAdmin(req)) return html(shell('<div class="box"><p><a href="/admin.html">← Accès administration</a></p><h2>Session administrateur</h2><p class="muted">Votre session a expiré.</p></div>'),401);
-      return html(page(await docsList(),await driverList(),' ',await machineStatuses(),await getExtinguisherDates()));
+      return html(page(await docsList(),await driverList(),' ',await machineStatuses()));
     }
     const fd=await req.formData();
     const action=String(fd.get('action')||'');
@@ -128,7 +121,7 @@ export default async req=>{
     if(action==='login'){
       if(!secret()) return html(shell('<div class="box"><p class="bad">La variable PARC_PASSWORD n\'est pas configurée dans Netlify.</p></div>'),500);
       if(String(fd.get('password')||'')!==secret()) return html(shell('<div class="box"><p class="bad">Mot de passe incorrect.</p><p><a href="/admin.html">Retour</a></p></div>'),401);
-      return html(await page(await docsList(),await driverList(),'Connexion administrateur réussie.',await machineStatuses(),await getExtinguisherDates()),200,{'Set-Cookie':cookie('PARC_ADMIN',makeToken('ADMIN'))});
+      return html(await page(await docsList(),await driverList(),'Connexion administrateur réussie.',await machineStatuses()),200,{'Set-Cookie':cookie('PARC_ADMIN',makeToken('ADMIN'))});
     }
 
     // Import en masse : l'ancien bulk-import.js envoie le mot de passe à chaque fichier.
@@ -148,15 +141,7 @@ export default async req=>{
       const enabled=String(fd.get('enabled')||'1')!=='0';
       if(!MACHINES[id]) return html(shell('<p class="bad">Matériel inconnu.</p>'),400);
       await statusStore().set(`machine/${id}.json`,JSON.stringify({id,enabled,updatedAt:new Date().toISOString()}),{metadata:{id,type:'machine-status',enabled:String(enabled)}});
-      return html(page(await docsList(),await driverList(),`${MACHINES[id].name} : ${enabled?'ACTIF — les échéances sont prises en compte.':'HORS SERVICE — les échéances sont masquées.'}`,await machineStatuses(),await getExtinguisherDates()));
-    }
-
-    if(action==='set-extinguisher'){
-      const id=String(fd.get('id')||'').toUpperCase();
-      const expiry=String(fd.get('expiryMonth')||'');
-      if(!hasExtinguisher(id) || !/^\d{4}-\d{2}$/.test(expiry)) return html(shell('<p class="bad">Mois et année d’échéance invalides.</p>'),400);
-      await extinguisherStore().set(`machine/${id}.json`,JSON.stringify({id,expiry,updatedAt:new Date().toISOString()}),{metadata:{id,type:'extinguisher',expiry}});
-      return html(page(await docsList(),await driverList(),`Échéance extincteur enregistrée pour ${MACHINES[id].name} : ${expiry.slice(5,7)}/${expiry.slice(0,4)}.`,await machineStatuses(),await getExtinguisherDates()));
+      return html(page(await docsList(),await driverList(),`${MACHINES[id].name} : ${enabled?'ACTIF — les échéances sont prises en compte.':'HORS SERVICE — les échéances sont masquées.'}`,await machineStatuses()));
     }
 
     if(action==='replace-doc'){
@@ -224,20 +209,20 @@ export default async req=>{
     }
     if(action==='delete-doc'){
       const key=String(fd.get('key')||'');if(key)await store().delete(key);
-      return html(page(await docsList(),await driverList(),'Document supprimé.',await machineStatuses(),await getExtinguisherDates()));
+      return html(page(await docsList(),await driverList(),'Document supprimé.',await machineStatuses()));
     }
     if(action==='add-driver'){
       const name=String(fd.get('name')||'').trim(),code=String(fd.get('code')||'').trim();
       if(!name||!code)return html(shell('<p class="bad">Nom et code obligatoires.</p>'),400);
       const id=crypto.randomUUID();
       await driverStore().set(`driver/${id}.json`,JSON.stringify({id,name,codeHash:hashSecret(code),enabled:true}),{metadata:{type:'driver'}});
-      return html(page(await docsList(),await driverList(),'Chauffeur ajouté.',await machineStatuses(),await getExtinguisherDates()));
+      return html(page(await docsList(),await driverList(),'Chauffeur ajouté.',await machineStatuses()));
     }
     if(action==='upload-driver'){
       const did=String(fd.get('driver')||''),cat=String(fd.get('cat')||'divers'),file=fd.get('file');
       if(!did||!DRIVER_CATEGORIES[cat]||!(file instanceof File))return html(shell('<p class="bad">Données invalides.</p>'),400);
       await driverStore().set(`docs/${did}/${cat}/${file.name.replace(/[\\/]/g,'_')}`,await file.arrayBuffer(),{metadata:{label:DRIVER_CATEGORIES[cat].label,contentType:file.type,uploadedAt:new Date().toISOString()}});
-      return html(page(await docsList(),await driverList(),'Document chauffeur chargé.',await machineStatuses(),await getExtinguisherDates()));
+      return html(page(await docsList(),await driverList(),'Document chauffeur chargé.',await machineStatuses()));
     }
     const id=String(fd.get('id')||'').toUpperCase(),type=String(fd.get('type')||''),file=fd.get('file');
     if(file instanceof File){
@@ -245,9 +230,9 @@ export default async req=>{
       let expiry=String(fd.get('expiry')||'');if(!expiry)expiry=expiryFor(type,file.name);
       const clean=file.name.replace(/[\\/]/g,'_');
       await store().set(`${id}/${type}/${clean}`,await file.arrayBuffer(),{metadata:{type,label:file.name,expiry,uploadedAt:new Date().toISOString()}});
-      return html(page(await docsList(),await driverList(),'Document chargé.',await machineStatuses(),await getExtinguisherDates()));
+      return html(page(await docsList(),await driverList(),'Document chargé.',await machineStatuses()));
     }
-    return html(page(await docsList(),await driverList(),' ',await machineStatuses(),await getExtinguisherDates()));
+    return html(page(await docsList(),await driverList(),' ',await machineStatuses()));
   }catch(e){
     console.error('ADMIN ERROR',e);
     return html(errorPage(e),500);
