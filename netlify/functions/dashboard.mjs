@@ -80,7 +80,7 @@ export default async()=>{
       id,
       name:MACHINES[id].name,
       category:MACHINES[id].group==='pelles'?'Matériel rail-route':'Camion',
-      label:`Extincteur — ${id}`,
+      label:`Extincteur`,
       equipmentType:MACHINES[id].group==='pelles'?'Pelle rail-route':'Camion',
       expiry:m?`${m[2]}/${m[1]}`:'',
       days,
