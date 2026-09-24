@@ -1,0 +1,19 @@
+name: Contrôle des documents
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  controle:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Vérifier les documents
+        env:
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+        run: python scripts/controle_documents.py
