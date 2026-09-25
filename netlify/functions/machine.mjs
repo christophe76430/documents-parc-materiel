@@ -74,13 +74,11 @@ function filterTable(m){
   return `<div class="box"><h2>🔧 Filtration</h2><p class="muted">${esc(data.source_label||m.name)}</p><div style="overflow-x:auto"><table class="filter-table"><thead><tr><th>Fonction</th><th>Référence</th></tr></thead><tbody>${rows}</tbody></table></div>${data.adblue?`<p><b>AdBlue :</b> ${esc(data.adblue)}</p>`:''}${data.note?`<p class="muted"><b>⚠️ Remarque :</b> ${esc(data.note)}</p>`:''}</div>`
 }
 
-function machineSummary(m,enabled,extDates){
-  const ext=extDates?.[m.id]||'';
-  const extLabel=/^(\d{4})-(\d{2})$/.test(ext)?`${ext.slice(5,7)}/${ext.slice(0,4)}`:'Non renseignée';
-  return `<div class="box machine-summary"><div><span class="summary-label">État</span><strong class="summary-state ${enabled?'ok':'off'}">${enabled?'ACTIF':'HORS SERVICE'}</strong></div><div><span class="summary-label">Catégorie</span><strong>${esc(m.group==='pelles'?'Matériel rail-route':m.group==='vehicules'?'Véhicule':'Camion')}</strong></div>${hasExtinguisher(m.id)?`<div><span class="summary-label">🧯 Extincteur</span><strong>${extLabel}</strong></div>`:''}</div>`;
+function machineSummary(m,enabled){
+  return `<div class="box machine-summary"><div><span class="summary-label">État</span><strong class="summary-state ${enabled?'ok':'off'}">${enabled?'ACTIF':'HORS SERVICE'}</strong></div><div><span class="summary-label">Catégorie</span><strong>${esc(m.group==='pelles'?'Matériel rail-route':m.group==='vehicules'?'Véhicule':'Camion')}</strong></div></div>`;
 }
 
-function docs(m,items){
+function docs(m,items,extDates={}){
   const by={};
   for(const x of items)(by[x.type]??=[]).push(x);
   const types=[...expectedTypes(m),...Object.keys(by).filter(t=>TYPES[t]&&!expectedTypes(m).includes(t))];
@@ -121,6 +119,13 @@ function docs(m,items){
     }
   }
 
+  if(hasExtinguisher(m.id)) {
+    const ext=String(extDates[m.id]||'');
+    const extLabel=/^(\d{4})-(\d{2})$/.test(ext)?`${ext.slice(5,7)}/${ext.slice(0,4)}`:'Date non renseignée';
+    const extState=extLabel==='Date non renseignée'?'bad':alertState(`${ext}-01`,'extinguisher').state;
+    out+=`<section class="doc-section"><h3>Extincteur</h3><div class="doc-row doc-row-missing">${docIcon('extinguisher')}<div class="doc-main">${dot(extState)}<div><span class="doc-title">Extincteur</span><span class="doc-detail ${extState}">${esc(extLabel)}</span></div></div></div></section>`;
+  }
+
   return out+'</div>'+filterTable(m)+'<p class="muted">Accès valable 8 heures sur cet équipement.</p>'
 }
 
@@ -128,10 +133,10 @@ export default async(req,context)=>{
   const id=String(context.params?.id||'').toUpperCase(),m=MACHINES[id];
   if(!m)return html('<h1>Matériel introuvable</h1>',404);
   const c=parseCookies(req);
-  if(validToken(c.PARC_AUTH,id)||validToken(c.PARC_ADMIN,'ADMIN')){const enabled=await getMachineStatus(id); const extDates=await getExtinguisherDates(); return page(m,machineSummary(m,enabled,extDates)+docs(m,await loadItems(id)),validToken(c.PARC_AUTH,id)?{'Set-Cookie':cookie('PARC_AUTH',makeToken(id))}:{});}
+  if(validToken(c.PARC_AUTH,id)||validToken(c.PARC_ADMIN,'ADMIN')){const enabled=await getMachineStatus(id); const extDates=await getExtinguisherDates(); return page(m,machineSummary(m,enabled)+docs(m,await loadItems(id),extDates),validToken(c.PARC_AUTH,id)?{'Set-Cookie':cookie('PARC_AUTH',makeToken(id))}:{});}
   if(req.method==='POST'){
     const fd=await req.formData();
-    if(String(fd.get('password')||'')===(process.env.PARC_PASSWORD||'')){const enabled=await getMachineStatus(id); const extDates=await getExtinguisherDates(); return page(m,machineSummary(m,enabled,extDates)+docs(m,await loadItems(id)),{'Set-Cookie':cookie('PARC_AUTH',makeToken(id))});}
+    if(String(fd.get('password')||'')===(process.env.PARC_PASSWORD||'')){const enabled=await getMachineStatus(id); const extDates=await getExtinguisherDates(); return page(m,machineSummary(m,enabled)+docs(m,await loadItems(id),extDates),{'Set-Cookie':cookie('PARC_AUTH',makeToken(id))});}
     return login(m,'Mot de passe incorrect.')
   }
   return login(m)
