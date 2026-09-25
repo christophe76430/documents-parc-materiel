@@ -75,7 +75,7 @@ function filterTable(m){
 }
 
 function machineSummary(m,enabled){
-  return `<div class="box machine-summary"><div><span class="summary-label">État</span><strong class="summary-state ${enabled?'ok':'off'}">${enabled?'ACTIVÉ':'DÉSACTIVÉ'}</strong></div><div><span class="summary-label">Catégorie</span><strong>${esc(m.group==='pelles'?'Matériel rail-route':m.group==='vehicules'?'Véhicule':'Camion')}</strong></div></div>`;
+  return `<div class="box machine-summary"><div><span class="summary-label">Catégorie</span><strong>${esc(m.group==='pelles'?'Matériel rail-route':m.group==='vehicules'?'Véhicule':'Camion')}</strong></div></div>`;
 }
 
 function docs(m,items,extDates={}){
