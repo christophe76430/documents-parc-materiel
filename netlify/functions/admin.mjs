@@ -69,7 +69,17 @@ const allowed=(id,type)=>!!MACHINES[id]&&!!TYPES[type]&&!(type==='agrement'&&!AG
 const expiryFor=(type,name)=>NO_EXPIRY.has(type)?'':iso(parseDate(name));
 
 async function docsList(){const {blobs}=await store().list({prefix:''});const out=[];for(const b of blobs){const p=b.key.split('/');if(!MACHINES[p[0]])continue;out.push({key:b.key,id:p[0],type:p[1]||'',label:p.slice(2).join('/')});}return out.sort((a,b)=>`${MACHINES[a.id].name}${a.label}`.localeCompare(`${MACHINES[b.id].name}${b.label}`,'fr'));}
-async function archiveList(){const {blobs}=await archiveStore().list({prefix:''});const out=[];for(const b of blobs){const p=b.key.split('/');const id=p[0];if(!MACHINES[id])continue;let meta={};try{meta=(await archiveStore().getMetadata(b.key,{consistency:'strong'}))?.metadata||{};}catch{}out.push({key:b.key,id,type:p[1]||'',label:meta.label||p.slice(3).join('/')||p[2]||b.key,archivedAt:meta.archivedAt||'',replacedFrom:meta.replacedFrom||'',expiry:meta.expiry||''});}return out.sort((a,b)=>String(b.archivedAt).localeCompare(String(a.archivedAt)));}
+async function archiveList(){
+  const {blobs}=await archiveStore().list({prefix:''});
+  const rows=await Promise.all(blobs.map(async b=>{
+    const p=b.key.split('/'); const id=p[0];
+    if(!MACHINES[id]) return null;
+    let meta={};
+    try{meta=(await archiveStore().getMetadata(b.key,{consistency:'strong'}))?.metadata||{};}catch{}
+    return {key:b.key,id,type:p[1]||'',label:meta.label||p.slice(3).join('/')||p[2]||b.key,archivedAt:meta.archivedAt||'',replacedFrom:meta.replacedFrom||'',expiry:meta.expiry||''};
+  }));
+  return rows.filter(Boolean).sort((a,b)=>String(b.archivedAt).localeCompare(String(a.archivedAt)));
+}
 async function machineStatuses(){
   const {blobs}=await statusStore().list({prefix:'machine/'});
   const out={};
@@ -82,18 +92,22 @@ async function machineStatuses(){
   return out;
 }
 async function adminAlerts(docs,extDates){
+  const now=Date.now();
+  const metas=await Promise.all(docs.map(async d=>(await store().getMetadata(d.key,{consistency:'strong'}).catch(()=>null))?.metadata||{}));
   let overdue=0,within30=0;
-  const now=new Date();
-  for(const d of docs){
-    const meta=(await store().getMetadata(d.key,{consistency:'strong'}).catch(()=>null))?.metadata||{};
-    const expiry=meta.expiry||'';
+  for(let i=0;i<docs.length;i++){
+    const d=docs[i], expiry=metas[i]?.expiry||'';
     if(!expiry||['carte','barreRouge','divers','doc','devis'].includes(d.type))continue;
     const date=new Date(`${expiry}T23:59:59`); if(Number.isNaN(date.getTime()))continue;
-    const days=Math.ceil((date-now)/86400000);
+    const days=Math.ceil((date.getTime()-now)/86400000);
     if(days<0)overdue++; else if(days<=30)within30++;
   }
   let ext30=0;
-  for(const expiry of Object.values(extDates||{})){const m=String(expiry).match(/^(\d{4})-(\d{2})$/);if(!m)continue;const date=new Date(Number(m[1]),Number(m[2]),0,23,59,59);const days=Math.ceil((date-now)/86400000);if(days<=30)ext30++;}
+  for(const expiry of Object.values(extDates||{})){
+    const m=String(expiry).match(/^(\d{4})-(\d{2})$/); if(!m)continue;
+    const date=new Date(Number(m[1]),Number(m[2]),0,23,59,59); const days=Math.ceil((date.getTime()-now)/86400000);
+    if(days<=30)ext30++;
+  }
   return {overdue,within30,ext30};
 }
 async function driverList(){const {blobs}=await driverStore().list({prefix:'driver/'});const values=await Promise.all(blobs.map(b=>driverStore().get(b.key,{type:'json'}).catch(()=>null)));return values.filter(Boolean);}
@@ -135,11 +149,19 @@ function page(docs,drivers,msg='',statuses={},extDates={},archives=[],alerts={})
   <script>const t=document.getElementById('doc-type'),e=document.getElementById('expiry'),no=${JSON.stringify([...NO_EXPIRY])};function sync(){e.style.display=no.includes(t.value)?'none':''}t.addEventListener('change',sync);sync();const q=document.getElementById('doc-search');q?.addEventListener('input',()=>document.querySelectorAll('.searchable').forEach(x=>x.style.display=!q.value||x.dataset.search.includes(q.value.toLowerCase())?'':'none'));</script><script src="/bulk-import.js"></script>`);
 }
 
+async function loadAdminData(){
+  const [docs,drivers,statuses,extDates,archives]=await Promise.all([
+    docsList(),driverList(),machineStatuses(),getExtinguisherDates(),archiveList()
+  ]);
+  const alerts=await adminAlerts(docs,extDates);
+  return {docs,drivers,statuses,extDates,archives,alerts};
+}
+
 export default async req=>{
   try{
     if(req.method==='GET'){
       if(!isAdmin(req)) return html(shell('<div class="box"><p><a href="/admin.html">← Accès administration</a></p><h2>Session administrateur</h2><p class="muted">Votre session a expiré.</p></div>'),401);
-      return html(page(await docsList(),await driverList(),' ',await machineStatuses(),await getExtinguisherDates(),await archiveList(),await adminAlerts(await docsList(),await getExtinguisherDates())));
+      {const d=await loadAdminData(); return html(page(d.docs,d.drivers,' ',d.statuses,d.extDates,d.archives,d.alerts));}
     }
     const fd=await req.formData();
     const action=String(fd.get('action')||'');
@@ -147,7 +169,7 @@ export default async req=>{
     if(action==='login'){
       if(!secret()) return html(shell('<div class="box"><p class="bad">La variable PARC_PASSWORD n\'est pas configurée dans Netlify.</p></div>'),500);
       if(String(fd.get('password')||'')!==secret()) return html(shell('<div class="box"><p class="bad">Mot de passe incorrect.</p><p><a href="/admin.html">Retour</a></p></div>'),401);
-      const loginDocs=await docsList(); const loginExt=await getExtinguisherDates(); return html(await page(loginDocs,await driverList(),'Connexion administrateur réussie.',await machineStatuses(),loginExt,await archiveList(),await adminAlerts(loginDocs,loginExt)),200,{'Set-Cookie':cookie('PARC_ADMIN',makeToken('ADMIN'))});
+      const d=await loadAdminData(); return html(await page(d.docs,d.drivers,'Connexion administrateur réussie.',d.statuses,d.extDates,d.archives,d.alerts),200,{'Set-Cookie':cookie('PARC_ADMIN',makeToken('ADMIN'))});
     }
 
     // Import en masse : l'ancien bulk-import.js envoie le mot de passe à chaque fichier.
@@ -167,7 +189,7 @@ export default async req=>{
       const enabled=String(fd.get('enabled')||'1')!=='0';
       if(!MACHINES[id]) return html(shell('<p class="bad">Matériel inconnu.</p>'),400);
       await statusStore().set(`machine/${id}.json`,JSON.stringify({id,enabled,updatedAt:new Date().toISOString()}),{metadata:{id,type:'machine-status',enabled:String(enabled)}});
-      return html(page(await docsList(),await driverList(),`${MACHINES[id].name} : ${enabled?'ACTIF — les échéances sont prises en compte.':'HORS SERVICE — les échéances sont masquées.'}`,await machineStatuses(),await getExtinguisherDates(),await archiveList(),await adminAlerts(await docsList(),await getExtinguisherDates())));
+      const d=await loadAdminData(); return html(page(d.docs,d.drivers,`${MACHINES[id].name} : ${enabled?'ACTIF — les échéances sont prises en compte.':'HORS SERVICE — les échéances sont masquées.'}`,d.statuses,d.extDates,d.archives,d.alerts));
     }
 
     if(action==='set-extinguisher'){
@@ -175,7 +197,7 @@ export default async req=>{
       const expiry=String(fd.get('expiryMonth')||'');
       if(!hasExtinguisher(id) || !/^\d{4}-\d{2}$/.test(expiry)) return html(shell('<p class="bad">Mois et année d’échéance invalides.</p>'),400);
       await extinguisherStore().set(`machine/${id}.json`,JSON.stringify({id,expiry,updatedAt:new Date().toISOString()}),{metadata:{id,type:'extinguisher',expiry}});
-      return html(page(await docsList(),await driverList(),`Échéance extincteur enregistrée pour ${MACHINES[id].name} : ${expiry.slice(5,7)}/${expiry.slice(0,4)}.`,await machineStatuses(),await getExtinguisherDates(),await archiveList(),await adminAlerts(await docsList(),await getExtinguisherDates())));
+      const d=await loadAdminData(); return html(page(d.docs,d.drivers,`Échéance extincteur enregistrée pour ${MACHINES[id].name} : ${expiry.slice(5,7)}/${expiry.slice(0,4)}.`,d.statuses,d.extDates,d.archives,d.alerts));
     }
 
     if(action==='replace-doc'){
@@ -246,24 +268,24 @@ export default async req=>{
       refreshedDocs.push({key:newKey,id,type,label:newLabel});
       refreshedDocs.sort((a,b)=>`${MACHINES[a.id].name}${a.label}`.localeCompare(`${MACHINES[b.id].name}${b.label}`,'fr'));
       const refreshedDrivers=await driverList();
-      return html(page(refreshedDocs,refreshedDrivers,`Document remplacé : ${oldLabel} → ${newLabel}. Vérification Blobs OK : ${newSize} octets écrits et relus. Ancien fichier archivé.`,await machineStatuses(),await getExtinguisherDates(),await archiveList(),await adminAlerts(refreshedDocs,await getExtinguisherDates())));
+      const d=await loadAdminData(); return html(page(d.docs,d.drivers,`Document remplacé : ${oldLabel} → ${newLabel}. Vérification Blobs OK : ${newSize} octets écrits et relus. Ancien fichier archivé.`,d.statuses,d.extDates,d.archives,d.alerts));
     }
     if(action==='delete-doc'){
       const key=String(fd.get('key')||'');if(key)await store().delete(key);
-      return html(page(await docsList(),await driverList(),'Document supprimé.',await machineStatuses(),await getExtinguisherDates(),await archiveList(),await adminAlerts(await docsList(),await getExtinguisherDates())));
+      const d=await loadAdminData(); return html(page(d.docs,d.drivers,'Document supprimé.',d.statuses,d.extDates,d.archives,d.alerts));
     }
     if(action==='add-driver'){
       const name=String(fd.get('name')||'').trim(),code=String(fd.get('code')||'').trim();
       if(!name||!code)return html(shell('<p class="bad">Nom et code obligatoires.</p>'),400);
       const id=crypto.randomUUID();
       await driverStore().set(`driver/${id}.json`,JSON.stringify({id,name,codeHash:hashSecret(code),enabled:true}),{metadata:{type:'driver'}});
-      return html(page(await docsList(),await driverList(),'Chauffeur ajouté.',await machineStatuses(),await getExtinguisherDates(),await archiveList(),await adminAlerts(await docsList(),await getExtinguisherDates())));
+      const d=await loadAdminData(); return html(page(d.docs,d.drivers,'Chauffeur ajouté.',d.statuses,d.extDates,d.archives,d.alerts));
     }
     if(action==='upload-driver'){
       const did=String(fd.get('driver')||''),cat=String(fd.get('cat')||'divers'),file=fd.get('file');
       if(!did||!DRIVER_CATEGORIES[cat]||!(file instanceof File))return html(shell('<p class="bad">Données invalides.</p>'),400);
       await driverStore().set(`docs/${did}/${cat}/${file.name.replace(/[\\/]/g,'_')}`,await file.arrayBuffer(),{metadata:{label:DRIVER_CATEGORIES[cat].label,contentType:file.type,uploadedAt:new Date().toISOString()}});
-      return html(page(await docsList(),await driverList(),'Document chauffeur chargé.',await machineStatuses(),await getExtinguisherDates(),await archiveList(),await adminAlerts(await docsList(),await getExtinguisherDates())));
+      const d=await loadAdminData(); return html(page(d.docs,d.drivers,'Document chauffeur chargé.',d.statuses,d.extDates,d.archives,d.alerts));
     }
     const id=String(fd.get('id')||'').toUpperCase(),type=String(fd.get('type')||''),file=fd.get('file');
     if(file instanceof File){
@@ -271,9 +293,9 @@ export default async req=>{
       let expiry=String(fd.get('expiry')||'');if(!expiry)expiry=expiryFor(type,file.name);
       const clean=file.name.replace(/[\\/]/g,'_');
       await store().set(`${id}/${type}/${clean}`,await file.arrayBuffer(),{metadata:{type,label:file.name,expiry,uploadedAt:new Date().toISOString()}});
-      return html(page(await docsList(),await driverList(),'Document chargé.',await machineStatuses(),await getExtinguisherDates(),await archiveList(),await adminAlerts(await docsList(),await getExtinguisherDates())));
+      const d=await loadAdminData(); return html(page(d.docs,d.drivers,'Document chargé.',d.statuses,d.extDates,d.archives,d.alerts));
     }
-    return html(page(await docsList(),await driverList(),' ',await machineStatuses(),await getExtinguisherDates(),await archiveList(),await adminAlerts(await docsList(),await getExtinguisherDates())));
+    {const d=await loadAdminData(); return html(page(d.docs,d.drivers,' ',d.statuses,d.extDates,d.archives,d.alerts));}
   }catch(e){
     console.error('ADMIN ERROR',e);
     return html(errorPage(e),500);

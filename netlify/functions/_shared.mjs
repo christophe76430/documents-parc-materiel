@@ -56,15 +56,14 @@ export function archiveStore(){
 }
 export function hasExtinguisher(id){ return !!MACHINES[id] && (MACHINES[id].group==='pelles' || /^T\d+$/.test(id)); }
 export async function getExtinguisherDates(){
-  const out={};
-  for(const id of Object.keys(MACHINES)){
-    if(!hasExtinguisher(id)) continue;
+  const ids=Object.keys(MACHINES).filter(hasExtinguisher);
+  const values=await Promise.all(ids.map(async id=>{
     try{
       const r=await extinguisherStore().get(`machine/${id}.json`,{type:'json',consistency:'strong'});
-      if(r?.expiry) out[id]=String(r.expiry);
-    }catch{}
-  }
-  return out;
+      return r?.expiry ? [id,String(r.expiry)] : null;
+    }catch{return null;}
+  }));
+  return Object.fromEntries(values.filter(Boolean));
 }
 export async function getMachineStatus(id){
   const key=`machine/${id}.json`;
