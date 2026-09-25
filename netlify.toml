@@ -16,3 +16,9 @@
   to = "/admin.html"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/api/machine-status"
+  to = "/.netlify/functions/machine-status"
+  status = 200
+  force = true
