@@ -93,5 +93,6 @@ export default async()=>{
   const all=rows.filter(Boolean);
   const items=all.filter(x=>x.days>=0).sort((a,b)=>a.priority-b.priority||a.days-b.days||a.name.localeCompare(b.name,'fr'));
   const overdue=all.filter(x=>x.days<0).sort((a,b)=>a.days-b.days||a.name.localeCompare(b.name,'fr')).map(x=>({...x, priorityLabel:'Urgent'}));
-  return json({items,overdue});
+  const allActive=all;
+  return json({items,overdue,stats:{total:allActive.length,overdue:overdue.length,within30:allActive.filter(x=>x.days>=0&&x.days<=30).length,valid:allActive.filter(x=>x.days>30).length,extinguisher:allActive.filter(x=>x.kind==='extinguisher').length}});
 };

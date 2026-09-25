@@ -6,6 +6,7 @@ export const STORE = 'parc-documents';
 export const DRIVER_STORE = 'parc-chauffeurs';
 export const STATUS_STORE = 'parc-materiel-status';
 export const EXTINGUISHER_STORE = 'parc-extincteurs';
+export const ARCHIVE_STORE = 'parc-documents-archive';
 export const REGION = 'eu-central-1';
 export const TTL = 8 * 60 * 60 * 1000;
 
@@ -49,6 +50,9 @@ export function statusStore(){
 }
 export function extinguisherStore(){
   return getStore({name:EXTINGUISHER_STORE,region:REGION,consistency:'strong'});
+}
+export function archiveStore(){
+  return getStore({name:ARCHIVE_STORE,region:REGION,consistency:'strong'});
 }
 export function hasExtinguisher(id){ return !!MACHINES[id] && (MACHINES[id].group==='pelles' || /^T\d+$/.test(id)); }
 export async function getExtinguisherDates(){

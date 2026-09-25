@@ -6,6 +6,7 @@ const STORE = 'parc-documents';
 const DRIVER_STORE = 'parc-chauffeurs';
 const STATUS_STORE = 'parc-materiel-status';
 const EXTINGUISHER_STORE = 'parc-extincteurs';
+const ARCHIVE_STORE = 'parc-documents-archive';
 const REGION = 'eu-central-1';
 const TTL = 8 * 60 * 60 * 1000;
 
@@ -39,6 +40,7 @@ const store = () => getStore({name:STORE,region:REGION,consistency:'strong'});
 const driverStore = () => getStore({name:DRIVER_STORE,region:REGION,consistency:'strong'});
 const statusStore = () => getStore({name:STATUS_STORE,region:REGION,consistency:'strong'});
 const extinguisherStore = () => getStore({name:EXTINGUISHER_STORE,region:REGION,consistency:'strong'});
+const archiveStore = () => getStore({name:ARCHIVE_STORE,region:REGION,consistency:'strong'});
 const hasExtinguisher = id => !!MACHINES[id] && (MACHINES[id].group==='pelles' || /^T\d+$/.test(id));
 async function getExtinguisherDates(){const out={};for(const id of Object.keys(MACHINES)){if(!hasExtinguisher(id))continue;try{const r=await extinguisherStore().get(`machine/${id}.json`,{type:'json',consistency:'strong'});if(r?.expiry)out[id]=String(r.expiry);}catch{}}return out;}
 const secret = () => process.env.PARC_PASSWORD || '';
@@ -67,6 +69,7 @@ const allowed=(id,type)=>!!MACHINES[id]&&!!TYPES[type]&&!(type==='agrement'&&!AG
 const expiryFor=(type,name)=>NO_EXPIRY.has(type)?'':iso(parseDate(name));
 
 async function docsList(){const {blobs}=await store().list({prefix:''});const out=[];for(const b of blobs){const p=b.key.split('/');if(!MACHINES[p[0]])continue;out.push({key:b.key,id:p[0],type:p[1]||'',label:p.slice(2).join('/')});}return out.sort((a,b)=>`${MACHINES[a.id].name}${a.label}`.localeCompare(`${MACHINES[b.id].name}${b.label}`,'fr'));}
+async function archiveList(){const {blobs}=await archiveStore().list({prefix:''});const out=[];for(const b of blobs){const p=b.key.split('/');const id=p[0];if(!MACHINES[id])continue;let meta={};try{meta=(await archiveStore().getMetadata(b.key,{consistency:'strong'}))?.metadata||{};}catch{}out.push({key:b.key,id,type:p[1]||'',label:meta.label||p.slice(3).join('/')||p[2]||b.key,archivedAt:meta.archivedAt||'',replacedFrom:meta.replacedFrom||'',expiry:meta.expiry||''});}return out.sort((a,b)=>String(b.archivedAt).localeCompare(String(a.archivedAt)));}
 async function machineStatuses(){
   const {blobs}=await statusStore().list({prefix:'machine/'});
   const out={};
@@ -78,10 +81,25 @@ async function machineStatuses(){
   }
   return out;
 }
+async function adminAlerts(docs,extDates){
+  let overdue=0,within30=0;
+  const now=new Date();
+  for(const d of docs){
+    const meta=(await store().getMetadata(d.key,{consistency:'strong'}).catch(()=>null))?.metadata||{};
+    const expiry=meta.expiry||'';
+    if(!expiry||['carte','barreRouge','divers','doc','devis'].includes(d.type))continue;
+    const date=new Date(`${expiry}T23:59:59`); if(Number.isNaN(date.getTime()))continue;
+    const days=Math.ceil((date-now)/86400000);
+    if(days<0)overdue++; else if(days<=30)within30++;
+  }
+  let ext30=0;
+  for(const expiry of Object.values(extDates||{})){const m=String(expiry).match(/^(\d{4})-(\d{2})$/);if(!m)continue;const date=new Date(Number(m[1]),Number(m[2]),0,23,59,59);const days=Math.ceil((date-now)/86400000);if(days<=30)ext30++;}
+  return {overdue,within30,ext30};
+}
 async function driverList(){const {blobs}=await driverStore().list({prefix:'driver/'});const values=await Promise.all(blobs.map(b=>driverStore().get(b.key,{type:'json'}).catch(()=>null)));return values.filter(Boolean);}
 function shell(body){return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration THN</title><link rel="stylesheet" href="/style.css"><style>.doc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.replace-form{margin:0}.replace{background:#1976d2;color:#fff}.doc-card form{margin:0}.doc-card button{margin:0}</style></head><body><main>${body}</main></body></html>`;}
 function errorPage(e){return shell(`<div class="box"><h2>Erreur Administration</h2><p class="bad">${esc(e?.message||String(e))}</p><p><a href="/admin.html">← Retour à l'accès administration</a></p></div>`);}
-function page(docs,drivers,msg='',statuses={},extDates={}){
+function page(docs,drivers,msg='',statuses={},extDates={},archives=[],alerts={}){
   const groupLabels={camions:'Camions',pelles:'Matériel rail-route',vehicules:'Véhicules'};
   const fleetHtml=Object.entries(machines).map(([group,items])=>`<div class="machine-status-group"><h3>${esc(groupLabels[group]||group)}</h3>${items.map(([id,name])=>{
     const enabled=statuses[id]!==false;
@@ -108,10 +126,11 @@ function page(docs,drivers,msg='',statuses={},extDates={}){
     </div>`;
   }).join('')}</div>`).join('');
   return shell(`<div class="box"><p><a href="/">← Accueil</a></p>${msg?`<p class="ok">${esc(msg)}</p>`:''}</div>
+  <div class="box admin-alerts"><h2>📊 Vue rapide</h2><div class="admin-alert-grid"><div><strong>${alerts.overdue||0}</strong><span>Échéances dépassées</span></div><div><strong>${alerts.within30||0}</strong><span>Échéances ≤ 30 jours</span></div><div><strong>${alerts.ext30||0}</strong><span>Extincteurs ≤ 30 jours</span></div><a class="admin-export" href="/export">📊 Export Excel</a></div></div>
   <div class="box fleet-status-box"><div class="fleet-status-head"><div><h2>⚙️ État du parc</h2><p class="muted">Passez un matériel sur <strong>OFF</strong> lorsqu'il est au garage ou inutilisé. Ses échéances disparaissent de l'accueil et des listes d'échéances.</p></div></div>${fleetHtml}</div>
   <div class="box"><h2>📄 Import d'un document</h2><form method="post" action="/.netlify/functions/admin" enctype="multipart/form-data"><label>Matériel</label><select name="id">${Object.values(MACHINES).map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select><label>Type</label><select name="type" id="doc-type">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select><label id="expiry-label">Date d'expiration</label><input id="expiry" type="date" name="expiry"><label>Fichier</label><input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" required><button>Charger le document</button></form></div>
   <div class="box"><h2>📦 Import de tout le parc</h2><p class="muted">Sélectionne le dossier <strong>PARCMAT</strong>. Les sous-dossiers sont reconnus automatiquement.</p><label>Mot de passe administrateur</label><input id="bulk-password" type="password"><label>Dossier PARCMAT</label><input id="bulk-files" type="file" webkitdirectory directory multiple accept=".pdf,.jpg,.jpeg,.png"><button type="button" id="bulk-start">Importer tout le parc</button><div id="bulk-status" class="muted"></div><pre id="bulk-log"></pre></div>
-  <div class="box"><h2>🗑️ Documents du parc</h2><input id="doc-search" type="search" placeholder="Rechercher un matériel ou document...">${docs.map(d=>`<div class="doc-card searchable" data-search="${esc((MACHINES[d.id].name+' '+d.label).toLowerCase())}"><span><b>${esc(MACHINES[d.id].name)}</b><br><span class="muted">${esc(TYPES[d.type]?.label||d.type)}</span><br>${esc(d.label)}</span><span class="doc-actions"><form method="post" action="/.netlify/functions/admin" enctype="multipart/form-data" class="replace-form"><input type="hidden" name="action" value="replace-doc"><input type="hidden" name="key" value="${esc(d.key)}"><input type="hidden" name="id" value="${esc(d.id)}"><input type="hidden" name="type" value="${esc(d.type)}"><input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" required hidden onchange="this.form.submit()"><button type="button" class="replace" onclick="this.previousElementSibling.click()">Remplacer</button></form><form method="post" action="/.netlify/functions/admin" onsubmit="return confirm('Supprimer définitivement ce document ?')"><input type="hidden" name="action" value="delete-doc"><input type="hidden" name="key" value="${esc(d.key)}"><button class="danger">Supprimer</button></form></span></div>`).join('')||'<p>Aucun document.</p>'}</div>
+  <div class="box"><h2>📄 Documents du parc</h2><input id="doc-search" type="search" placeholder="Rechercher un matériel ou document...">${docs.map(d=>`<div class="doc-card searchable" data-search="${esc((MACHINES[d.id].name+' '+d.label).toLowerCase())}"><span><b>${esc(MACHINES[d.id].name)}</b><br><span class="muted">${esc(TYPES[d.type]?.label||d.type)}</span><br>${esc(d.label)}</span><span class="doc-actions"><form method="post" action="/.netlify/functions/admin" enctype="multipart/form-data" class="replace-form"><input type="hidden" name="action" value="replace-doc"><input type="hidden" name="key" value="${esc(d.key)}"><input type="hidden" name="id" value="${esc(d.id)}"><input type="hidden" name="type" value="${esc(d.type)}"><input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" required hidden onchange="this.form.submit()"><button type="button" class="replace" onclick="this.previousElementSibling.click()">Remplacer</button></form><form method="post" action="/.netlify/functions/admin" onsubmit="return confirm('Supprimer définitivement ce document ?')"><input type="hidden" name="action" value="delete-doc"><input type="hidden" name="key" value="${esc(d.key)}"><button class="danger">Supprimer</button></form></span></div>`).join('')||'<p>Aucun document.</p>'}</div>\n  <div class="box archive-box"><div class="archive-head"><div><h2>🗄️ Archive</h2><p class="muted">Les anciens fichiers sont conservés automatiquement lors d’un remplacement.</p></div><span class="archive-count">${archives.length} fichier(s)</span></div>${archives.length?archives.map(a=>`<div class="doc-card archive-card"><span><b>${esc(MACHINES[a.id]?.name||a.id)}</b><br><span class="muted">${esc(TYPES[a.type]?.label||a.type)}</span><br>${esc(a.label)}${a.archivedAt?`<br><small class="muted">Archivé le ${esc(new Date(a.archivedAt).toLocaleString('fr-FR'))}</small>`:''}</span><span class="doc-actions"><a class="replace" href="/.netlify/functions/archive?key=${encodeURIComponent(a.key)}" target="_blank" rel="noopener">👁️ Consulter</a></span></div>`).join(''):'<p class="muted">Aucun document archivé.</p>'}</div>
   <div class="box"><h2>👷 Gestion des chauffeurs</h2>${drivers.map(d=>`<p><b>${esc(d.name)}</b> — code personnel enregistré</p>`).join('')||'<p class="muted">Aucun chauffeur.</p>'}<form method="post" action="/.netlify/functions/admin"><input type="hidden" name="action" value="add-driver"><label>Nom du chauffeur</label><input name="name" required><label>Code personnel</label><input name="code" required><button>Ajouter le chauffeur</button></form></div>${drivers.map(d=>`<div class="box"><h3>📁 Documents — ${esc(d.name)}</h3><form method="post" action="/.netlify/functions/admin" enctype="multipart/form-data"><input type="hidden" name="action" value="upload-driver"><input type="hidden" name="driver" value="${esc(d.id)}"><label>Rubrique</label><select name="cat">${Object.entries(DRIVER_CATEGORIES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select><label>Fichier</label><input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" required><button>Charger</button></form></div>`).join('')}
   <script>const t=document.getElementById('doc-type'),e=document.getElementById('expiry'),no=${JSON.stringify([...NO_EXPIRY])};function sync(){e.style.display=no.includes(t.value)?'none':''}t.addEventListener('change',sync);sync();const q=document.getElementById('doc-search');q?.addEventListener('input',()=>document.querySelectorAll('.searchable').forEach(x=>x.style.display=!q.value||x.dataset.search.includes(q.value.toLowerCase())?'':'none'));</script><script src="/bulk-import.js"></script>`);
 }
@@ -120,7 +139,7 @@ export default async req=>{
   try{
     if(req.method==='GET'){
       if(!isAdmin(req)) return html(shell('<div class="box"><p><a href="/admin.html">← Accès administration</a></p><h2>Session administrateur</h2><p class="muted">Votre session a expiré.</p></div>'),401);
-      return html(page(await docsList(),await driverList(),' ',await machineStatuses(),await getExtinguisherDates()));
+      return html(page(await docsList(),await driverList(),' ',await machineStatuses(),await getExtinguisherDates(),await archiveList(),await adminAlerts(await docsList(),await getExtinguisherDates())));
     }
     const fd=await req.formData();
     const action=String(fd.get('action')||'');
@@ -128,7 +147,7 @@ export default async req=>{
     if(action==='login'){
       if(!secret()) return html(shell('<div class="box"><p class="bad">La variable PARC_PASSWORD n\'est pas configurée dans Netlify.</p></div>'),500);
       if(String(fd.get('password')||'')!==secret()) return html(shell('<div class="box"><p class="bad">Mot de passe incorrect.</p><p><a href="/admin.html">Retour</a></p></div>'),401);
-      return html(await page(await docsList(),await driverList(),'Connexion administrateur réussie.',await machineStatuses(),await getExtinguisherDates()),200,{'Set-Cookie':cookie('PARC_ADMIN',makeToken('ADMIN'))});
+      const loginDocs=await docsList(); const loginExt=await getExtinguisherDates(); return html(await page(loginDocs,await driverList(),'Connexion administrateur réussie.',await machineStatuses(),loginExt,await archiveList(),await adminAlerts(loginDocs,loginExt)),200,{'Set-Cookie':cookie('PARC_ADMIN',makeToken('ADMIN'))});
     }
 
     // Import en masse : l'ancien bulk-import.js envoie le mot de passe à chaque fichier.
@@ -148,7 +167,7 @@ export default async req=>{
       const enabled=String(fd.get('enabled')||'1')!=='0';
       if(!MACHINES[id]) return html(shell('<p class="bad">Matériel inconnu.</p>'),400);
       await statusStore().set(`machine/${id}.json`,JSON.stringify({id,enabled,updatedAt:new Date().toISOString()}),{metadata:{id,type:'machine-status',enabled:String(enabled)}});
-      return html(page(await docsList(),await driverList(),`${MACHINES[id].name} : ${enabled?'ACTIF — les échéances sont prises en compte.':'HORS SERVICE — les échéances sont masquées.'}`,await machineStatuses(),await getExtinguisherDates()));
+      return html(page(await docsList(),await driverList(),`${MACHINES[id].name} : ${enabled?'ACTIF — les échéances sont prises en compte.':'HORS SERVICE — les échéances sont masquées.'}`,await machineStatuses(),await getExtinguisherDates(),await archiveList(),await adminAlerts(await docsList(),await getExtinguisherDates())));
     }
 
     if(action==='set-extinguisher'){
@@ -156,7 +175,7 @@ export default async req=>{
       const expiry=String(fd.get('expiryMonth')||'');
       if(!hasExtinguisher(id) || !/^\d{4}-\d{2}$/.test(expiry)) return html(shell('<p class="bad">Mois et année d’échéance invalides.</p>'),400);
       await extinguisherStore().set(`machine/${id}.json`,JSON.stringify({id,expiry,updatedAt:new Date().toISOString()}),{metadata:{id,type:'extinguisher',expiry}});
-      return html(page(await docsList(),await driverList(),`Échéance extincteur enregistrée pour ${MACHINES[id].name} : ${expiry.slice(5,7)}/${expiry.slice(0,4)}.`,await machineStatuses(),await getExtinguisherDates()));
+      return html(page(await docsList(),await driverList(),`Échéance extincteur enregistrée pour ${MACHINES[id].name} : ${expiry.slice(5,7)}/${expiry.slice(0,4)}.`,await machineStatuses(),await getExtinguisherDates(),await archiveList(),await adminAlerts(await docsList(),await getExtinguisherDates())));
     }
 
     if(action==='replace-doc'){
@@ -167,6 +186,11 @@ export default async req=>{
       if(!oldKey||!allowed(id,type)||!(file instanceof File)) return html(shell('<p class="bad">Données invalides pour le remplacement.</p>'),400);
       const clean=file.name.replace(/[\\/]/g,'_');
       const newKey=`${id}/${type}/${clean}`;
+      const oldBytes=await store().get(oldKey,{type:'arrayBuffer'}).catch(()=>null);
+      if(!oldBytes) return html(shell('<div class="box"><h2>Remplacement impossible</h2><p class="bad">L’ancien document n’a pas pu être lu avant archivage. Aucun fichier n’a été modifié.</p><p><a href="/admin">← Retour</a></p></div>'),500);
+      const archiveKey=`${id}/${type}/${Date.now()}_${clean}`;
+      let oldMeta={}; try{ oldMeta=(await store().getMetadata(oldKey,{consistency:'strong'}))?.metadata||{}; }catch{}
+      await archiveStore().set(archiveKey,oldBytes,{metadata:{id,type,label:oldMeta.label||oldKey.split('/').pop()||oldKey,expiry:oldMeta.expiry||'',archivedAt:new Date().toISOString(),replacedFrom:oldKey}});
       let expiry=expiryFor(type,file.name);
       if(!expiry){
         try{
@@ -202,6 +226,8 @@ export default async req=>{
       // Le nouveau blob a déjà été vérifié ci-dessus par getMetadata.
 
       // Seulement maintenant, supprimer l'ancien fichier.
+      const archivedStillThere=!!(await archiveStore().get(archiveKey,{type:'arrayBuffer',consistency:'strong'}).catch(()=>null));
+      if(!archivedStillThere)return html(shell('<div class="box"><h2>Remplacement interrompu</h2><p class="bad">L’archive n’a pas pu être vérifiée. L’ancien document est conservé.</p><p><a href="/admin">← Retour</a></p></div>'),500);
       if(oldKey && oldKey!==newKey) await store().delete(oldKey);
 
       // Vérifier que l'ancien a disparu et que le nouveau est toujours présent, contenu compris.
@@ -220,24 +246,24 @@ export default async req=>{
       refreshedDocs.push({key:newKey,id,type,label:newLabel});
       refreshedDocs.sort((a,b)=>`${MACHINES[a.id].name}${a.label}`.localeCompare(`${MACHINES[b.id].name}${b.label}`,'fr'));
       const refreshedDrivers=await driverList();
-      return html(page(refreshedDocs,refreshedDrivers,`Document remplacé : ${oldLabel} → ${newLabel}. Vérification Blobs OK : ${newSize} octets écrits et relus. Ancien supprimé.`,await machineStatuses()));
+      return html(page(refreshedDocs,refreshedDrivers,`Document remplacé : ${oldLabel} → ${newLabel}. Vérification Blobs OK : ${newSize} octets écrits et relus. Ancien fichier archivé.`,await machineStatuses(),await getExtinguisherDates(),await archiveList(),await adminAlerts(refreshedDocs,await getExtinguisherDates())));
     }
     if(action==='delete-doc'){
       const key=String(fd.get('key')||'');if(key)await store().delete(key);
-      return html(page(await docsList(),await driverList(),'Document supprimé.',await machineStatuses(),await getExtinguisherDates()));
+      return html(page(await docsList(),await driverList(),'Document supprimé.',await machineStatuses(),await getExtinguisherDates(),await archiveList(),await adminAlerts(await docsList(),await getExtinguisherDates())));
     }
     if(action==='add-driver'){
       const name=String(fd.get('name')||'').trim(),code=String(fd.get('code')||'').trim();
       if(!name||!code)return html(shell('<p class="bad">Nom et code obligatoires.</p>'),400);
       const id=crypto.randomUUID();
       await driverStore().set(`driver/${id}.json`,JSON.stringify({id,name,codeHash:hashSecret(code),enabled:true}),{metadata:{type:'driver'}});
-      return html(page(await docsList(),await driverList(),'Chauffeur ajouté.',await machineStatuses(),await getExtinguisherDates()));
+      return html(page(await docsList(),await driverList(),'Chauffeur ajouté.',await machineStatuses(),await getExtinguisherDates(),await archiveList(),await adminAlerts(await docsList(),await getExtinguisherDates())));
     }
     if(action==='upload-driver'){
       const did=String(fd.get('driver')||''),cat=String(fd.get('cat')||'divers'),file=fd.get('file');
       if(!did||!DRIVER_CATEGORIES[cat]||!(file instanceof File))return html(shell('<p class="bad">Données invalides.</p>'),400);
       await driverStore().set(`docs/${did}/${cat}/${file.name.replace(/[\\/]/g,'_')}`,await file.arrayBuffer(),{metadata:{label:DRIVER_CATEGORIES[cat].label,contentType:file.type,uploadedAt:new Date().toISOString()}});
-      return html(page(await docsList(),await driverList(),'Document chauffeur chargé.',await machineStatuses(),await getExtinguisherDates()));
+      return html(page(await docsList(),await driverList(),'Document chauffeur chargé.',await machineStatuses(),await getExtinguisherDates(),await archiveList(),await adminAlerts(await docsList(),await getExtinguisherDates())));
     }
     const id=String(fd.get('id')||'').toUpperCase(),type=String(fd.get('type')||''),file=fd.get('file');
     if(file instanceof File){
@@ -245,9 +271,9 @@ export default async req=>{
       let expiry=String(fd.get('expiry')||'');if(!expiry)expiry=expiryFor(type,file.name);
       const clean=file.name.replace(/[\\/]/g,'_');
       await store().set(`${id}/${type}/${clean}`,await file.arrayBuffer(),{metadata:{type,label:file.name,expiry,uploadedAt:new Date().toISOString()}});
-      return html(page(await docsList(),await driverList(),'Document chargé.',await machineStatuses(),await getExtinguisherDates()));
+      return html(page(await docsList(),await driverList(),'Document chargé.',await machineStatuses(),await getExtinguisherDates(),await archiveList(),await adminAlerts(await docsList(),await getExtinguisherDates())));
     }
-    return html(page(await docsList(),await driverList(),' ',await machineStatuses(),await getExtinguisherDates()));
+    return html(page(await docsList(),await driverList(),' ',await machineStatuses(),await getExtinguisherDates(),await archiveList(),await adminAlerts(await docsList(),await getExtinguisherDates())));
   }catch(e){
     console.error('ADMIN ERROR',e);
     return html(errorPage(e),500);

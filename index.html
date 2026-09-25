@@ -27,43 +27,34 @@
     <a class="category-card drivers" href="/chauffeurs"><img src="/assets/chauffeur.jpg" alt="Espace THN"><div class="category-body"><div class="category-icon">👥</div><div class="category-content"><h2>Espace</h2><p>Vos documents, formations et informations utiles</p></div><span class="arrow">→</span></div></a>
   </section>
 
+  <section class="global-search"><div class="search-box"><span class="search-icon">🔎</span><input id="global-search" type="search" placeholder="Rechercher un matériel, un document ou une référence..." autocomplete="off"><button id="clear-search" type="button" aria-label="Effacer">×</button></div><div id="search-results" class="search-results" hidden></div></section>
+
+  <section class="fleet-dashboard"><div class="stat-card"><strong id="stat-overdue">—</strong><span>Échéances dépassées</span></div><div class="stat-card warning"><strong id="stat-30">—</strong><span>Échéances ≤ 30 jours</span></div><div class="stat-card ok"><strong id="stat-valid">—</strong><span>Échéances valides</span></div><div class="stat-card extinguisher"><strong id="stat-ext">—</strong><span>Extincteurs suivis</span></div></section>
+
   <section class="deadlines">
-    <div class="deadlines-head">
-      <div><h2>▣ &nbsp;Échéances à venir</h2><p>Les échéances sont classées de la plus urgente à la plus éloignée. Faites défiler pour voir les suivantes.</p></div>
-    </div>
+    <div class="deadlines-head"><div><h2>▣ &nbsp;Échéances à venir</h2><p>Les échéances sont classées de la plus urgente à la plus éloignée. Faites défiler pour voir les suivantes.</p></div><div class="deadline-tools"><select id="deadline-filter"><option value="all">Toutes</option><option value="camions">Camions</option><option value="pelles">Matériel rail-route</option><option value="vehicules">Véhicules</option><option value="extinguisher">Extincteurs</option></select><button type="button" id="print-deadlines">🖨️ Imprimer</button></div></div>
     <div id="deadline-table"><p class="muted">Chargement…</p></div>
   </section>
 
   <section class="deadlines overdue-deadlines" id="overdue-section">
-    <div class="deadlines-head">
-      <div><h2 class="overdue-title">🔴 &nbsp;Échéances dépassées</h2><p>Documents dont la date d’échéance est dépassée.</p></div>
-    </div>
+    <div class="deadlines-head"><div><h2 class="overdue-title">🔴 &nbsp;Échéances dépassées</h2><p>Documents dont la date d’échéance est dépassée.</p></div><div class="deadline-tools"><select id="overdue-filter"><option value="all">Toutes</option><option value="camions">Camions</option><option value="pelles">Matériel rail-route</option><option value="vehicules">Véhicules</option><option value="extinguisher">Extincteurs</option></select></div></div>
     <div id="overdue-table"><p class="muted">Chargement…</p></div>
   </section>
 
   <footer class="site-footer">
     <div class="site-footer-company">TRANSPORTS HAUTE NORMANDIE &nbsp; | &nbsp; Le Havre - Normandie</div>
     <img class="site-footer-iso" src="/assets/iso.png" alt="ISO 45001">
-    <div class="site-footer-copy">Copyright 2026 Christophe Della casa &nbsp; | &nbsp; Version <strong>V41</strong></div>
+    <div class="site-footer-copy">Copyright 2026 Christophe Della casa &nbsp; | &nbsp; Version <strong>V42</strong></div>
     <a class="site-footer-admin" href="/admin" aria-label="Administration" title="Administration">⚙️</a>
   </footer>
 </main>
 <script>
-fetch('/api/dashboard').then(r=>r.json()).then(d=>{
- const items=(d.items||[]), overdue=(d.overdue||[]);
- const root=document.getElementById('deadline-table');
- const overRoot=document.getElementById('overdue-table');
- const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- if(!items.length){root.innerHTML='<p class="muted">Aucune échéance à venir.</p>';}
- else {
-   const rows=items.map(x=>`<tr><td><strong>${esc(x.name)}</strong></td><td>${esc(x.category)}</td><td>${esc(x.label)}${x.kind==='extinguisher'?' 🧯':''}</td><td>${esc(x.expiry)}</td><td class="days ${x.status.class}">${x.days} jours</td><td><span class="table-status"><span class="dot ${x.status.class}"></span>${esc(x.priorityLabel)}</span></td></tr>`).join('');
-   root.innerHTML=`<div class="deadline-fixed-head"><table><thead><tr><th>Matériel</th><th>Type</th><th>Document</th><th>Date d’échéance</th><th>Jours restants</th><th>Statut</th></tr></thead></table></div><div class="deadline-scroll-body"><table><tbody>${rows}</tbody></table></div>`;
- }
- if(!overdue.length){document.getElementById('overdue-section').style.display='none';}
- else {
-   const rows=overdue.map(x=>`<tr><td><strong>${esc(x.name)}</strong></td><td>${esc(x.category)}</td><td>${esc(x.label)}${x.kind==='extinguisher'?' 🧯':''}</td><td>${esc(x.expiry)}</td><td class="days red">${Math.abs(x.days)} jours de retard</td><td><span class="table-status red"><span class="dot red"></span>Urgent</span></td></tr>`).join('');
-   overRoot.innerHTML=`<div class="deadline-fixed-head overdue-fixed-head"><table><thead><tr><th>Matériel</th><th>Type</th><th>Document</th><th>Date d’échéance</th><th>Retard</th><th>Statut</th></tr></thead></table></div><div class="deadline-scroll-body overdue-scroll-body"><table><tbody>${rows}</tbody></table></div>`;
- }
-}).catch(()=>{document.getElementById('deadline-table').innerHTML='<p class="bad">Impossible de charger les échéances.</p>';document.getElementById('overdue-table').innerHTML='';});
+let dashboardData={items:[],overdue:[]};const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function matchesFilter(x,f){if(f==='all')return true;if(f==='extinguisher')return x.kind==='extinguisher';if(f==='camions')return x.category==='Camion';if(f==='vehicules')return x.category==='Véhicule';if(f==='pelles')return x.category==='Matériel rail-route';return true}
+function renderTables(){const items=dashboardData.items.filter(x=>matchesFilter(x,document.getElementById('deadline-filter')?.value||'all'));const overdue=dashboardData.overdue.filter(x=>matchesFilter(x,document.getElementById('overdue-filter')?.value||'all'));const root=document.getElementById('deadline-table'),overRoot=document.getElementById('overdue-table');if(!items.length)root.innerHTML='<p class="muted">Aucune échéance correspondant au filtre.</p>';else{const rows=items.map(x=>`<tr><td><strong>${esc(x.name)}</strong></td><td>${esc(x.category)}</td><td>${esc(x.label)}${x.kind==='extinguisher'?' 🧯':''}</td><td>${esc(x.expiry)}</td><td class="days ${x.status.class}">${x.days} jours</td><td><span class="table-status"><span class="dot ${x.status.class}"></span>${esc(x.priorityLabel)}</span></td></tr>`).join('');root.innerHTML=`<div class="deadline-fixed-head"><table><thead><tr><th>Matériel</th><th>Type</th><th>Document</th><th>Date d’échéance</th><th>Jours restants</th><th>Statut</th></tr></thead></table></div><div class="deadline-scroll-body"><table><tbody>${rows}</tbody></table></div>`}if(!dashboardData.overdue.length){document.getElementById('overdue-section').style.display='none'}else{document.getElementById('overdue-section').style.display='block';if(!overdue.length)overRoot.innerHTML='<p class="muted">Aucune échéance dépassée correspondant au filtre.</p>';else{const rows=overdue.map(x=>`<tr><td><strong>${esc(x.name)}</strong></td><td>${esc(x.category)}</td><td>${esc(x.label)}${x.kind==='extinguisher'?' 🧯':''}</td><td>${esc(x.expiry)}</td><td class="days red">${Math.abs(x.days)} jours de retard</td><td><span class="table-status red"><span class="dot red"></span>Urgent</span></td></tr>`).join('');overRoot.innerHTML=`<div class="deadline-fixed-head overdue-fixed-head"><table><thead><tr><th>Matériel</th><th>Type</th><th>Document</th><th>Date d’échéance</th><th>Retard</th><th>Statut</th></tr></thead></table></div><div class="deadline-scroll-body overdue-scroll-body"><table><tbody>${rows}</tbody></table></div>`}}}
+function printDeadlines(){const w=window.open('','_blank');if(!w)return;const rows=[...dashboardData.items,...dashboardData.overdue].map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.category)}</td><td>${esc(x.label)}</td><td>${esc(x.expiry)}</td><td>${x.days<0?Math.abs(x.days)+' jours de retard':x.days+' jours'}</td></tr>`).join('');w.document.write(`<html lang="fr"><head><title>Échéances THN</title><style>body{font-family:Arial;color:#173b61}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:7px;text-align:left}th{background:#edf4fa}</style></head><body><h1>Échéances du parc THN</h1><p>Édité le ${new Date().toLocaleDateString('fr-FR')}</p><table><thead><tr><th>Matériel</th><th>Type</th><th>Document</th><th>Échéance</th><th>Délai</th></tr></thead><tbody>${rows}</tbody></table><script>window.print();<\/script></body></html>`);w.document.close()}
+fetch('/api/dashboard').then(r=>r.json()).then(d=>{dashboardData=d||{};const st=d.stats||{};document.getElementById('stat-overdue').textContent=st.overdue??0;document.getElementById('stat-30').textContent=st.within30??0;document.getElementById('stat-valid').textContent=st.valid??0;document.getElementById('stat-ext').textContent=st.extinguisher??0;renderTables()}).catch(()=>{document.getElementById('deadline-table').innerHTML='<p class="bad">Impossible de charger les échéances.</p>'});
+document.getElementById('deadline-filter')?.addEventListener('change',renderTables);document.getElementById('overdue-filter')?.addEventListener('change',renderTables);document.getElementById('print-deadlines')?.addEventListener('click',printDeadlines);
+const searchInput=document.getElementById('global-search'),searchResults=document.getElementById('search-results'),clearSearch=document.getElementById('clear-search');let searchTimer;searchInput?.addEventListener('input',()=>{clearTimeout(searchTimer);const q=searchInput.value.trim();if(q.length<2){searchResults.hidden=true;searchResults.innerHTML='';return}searchTimer=setTimeout(()=>fetch('/api/search?q='+encodeURIComponent(q)).then(r=>r.json()).then(d=>{const ms=(d.machines||[]).map(x=>`<a href="${x.url}" class="search-result"><strong>${esc(x.name)}</strong><span>${esc(x.group)}</span></a>`).join('');const ds=(d.documents||[]).map(x=>`<a href="${x.url}" class="search-result"><strong>${esc(x.label)}</strong><span>${esc(x.name)} — ${esc(x.file)}</span></a>`).join('');searchResults.innerHTML=(ms?'<div class="search-title">Matériels</div>'+ms:'')+(ds?'<div class="search-title">Documents</div>'+ds:'')||'<p class="muted">Aucun résultat.</p>';searchResults.hidden=false}).catch(()=>{searchResults.innerHTML='<p class="bad">Recherche indisponible.</p>';searchResults.hidden=false}),220)});clearSearch?.addEventListener('click',()=>{searchInput.value='';searchResults.hidden=true;searchInput.focus()});document.addEventListener('click',e=>{if(!e.target.closest('.global-search'))searchResults.hidden=true});
 </script>
 </body></html>
