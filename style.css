@@ -231,7 +231,7 @@ main:not(.home-main):not(.category-main){max-width:1100px;margin:38px auto;paddi
  .deadline-fixed-head table,.deadline-scroll-body table{min-width:850px;}
 }
 
-/* État actif / hors service du parc */
+/* État actif / désactivé du parc */
 .fleet-status-box{max-width:1250px}
 .fleet-status-head h2{margin:0 0 6px}
 .machine-status-group{margin-top:22px}

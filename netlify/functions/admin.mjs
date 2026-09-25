@@ -135,7 +135,7 @@ function page(docs,drivers,msg='',statuses={},extDates={},archives=[],alerts={})
         </form>
       </div>
       <div class="machine-status-name"><strong>${esc(code)}</strong><span>${esc(desc)}</span></div>
-      <div class="machine-status-state">${enabled?'ACTIF — échéances prises en compte':'HORS SERVICE — échéances masquées'}</div>
+      <div class="machine-status-state">${enabled?'ON — échéances prises en compte':'OFF — échéances masquées'}</div>
       ${hasExtinguisher(id)?`<form method="post" action="/.netlify/functions/admin" class="extinguisher-form"><input type="hidden" name="action" value="set-extinguisher"><input type="hidden" name="id" value="${esc(id)}"><label class="extinguisher-label"><img src="/assets/extincteur.svg" alt="Extincteur"> Extincteur</label><input type="month" name="expiryMonth" value="${esc(extValue)}" title="Mois et année d’échéance de l’extincteur"><button type="submit">Enregistrer</button></form>`:''}
     </div>`;
   }).join('')}</div>`).join('');
@@ -189,7 +189,7 @@ export default async req=>{
       const enabled=String(fd.get('enabled')||'1')!=='0';
       if(!MACHINES[id]) return html(shell('<p class="bad">Matériel inconnu.</p>'),400);
       await statusStore().set(`machine/${id}.json`,JSON.stringify({id,enabled,updatedAt:new Date().toISOString()}),{metadata:{id,type:'machine-status',enabled:String(enabled)}});
-      const d=await loadAdminData(); return html(page(d.docs,d.drivers,`${MACHINES[id].name} : ${enabled?'ACTIF — les échéances sont prises en compte.':'HORS SERVICE — les échéances sont masquées.'}`,d.statuses,d.extDates,d.archives,d.alerts));
+      const d=await loadAdminData(); return html(page(d.docs,d.drivers,`${MACHINES[id].name} : ${enabled?'ON — les échéances sont prises en compte.':'OFF — les échéances sont masquées.'}`,d.statuses,d.extDates,d.archives,d.alerts));
     }
 
     if(action==='set-extinguisher'){

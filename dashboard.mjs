@@ -1,4 +1,4 @@
-import {MACHINES,TYPES,store,status,json} from './_shared.mjs';
+import {MACHINES,TYPES,store,status,json,getMachineStatuses,getExtinguisherDates,hasExtinguisher} from './_shared.mjs';
 export const config={path:'/api/dashboard'};
 
 function parseExpiryFromFilename(filename){
@@ -21,12 +21,22 @@ function dashboardStatus(days){
 
 function priority(s){return s.class==='red'?0:s.class==='orange'?1:s.class==='green'?2:3}
 
+function extinguisherDate(expiry){
+  const m=String(expiry||'').match(/^(\d{4})-(\d{2})$/);
+  if(!m)return null;
+  const year=Number(m[1]), month=Number(m[2]);
+  if(month<1||month>12)return null;
+  return new Date(year,month,0,23,59,59);
+}
+
 export default async()=>{
+  const active=await getMachineStatuses();
   const {blobs}=await store().list({prefix:''});
   const candidates=blobs.filter(b=>MACHINES[b.key.split('/')[0]]);
   const rows=await Promise.all(candidates.map(async b=>{
     const p=b.key.split('/');
     const id=p[0];
+    if(active[id]===false)return null;
     const filename=p[p.length-1]||'';
     const typeFromKey=p[1]||'';
     // First use the date convention in the filename; otherwise read stored metadata.
@@ -58,8 +68,31 @@ export default async()=>{
       priorityLabel:s.label
     };
   }));
+  const extinguisherDates=await getExtinguisherDates();
+  for(const [id,expiry] of Object.entries(extinguisherDates)){
+    if(active[id]===false || !hasExtinguisher(id)) continue;
+    const date=extinguisherDate(expiry);
+    if(!date) continue;
+    const days=Math.ceil((date-new Date())/86400000);
+    const s=dashboardStatus(days);
+    const m=String(expiry).match(/^(\d{4})-(\d{2})$/);
+    rows.push({
+      id,
+      name:MACHINES[id].name,
+      category:MACHINES[id].group==='pelles'?'Matériel rail-route':'Camion',
+      label:`Extincteur`,
+      equipmentType:MACHINES[id].group==='pelles'?'Pelle rail-route':'Camion',
+      expiry:m?`${m[2]}/${m[1]}`:'',
+      days,
+      status:s,
+      priority:priority(s),
+      priorityLabel:s.label,
+      kind:'extinguisher'
+    });
+  }
   const all=rows.filter(Boolean);
   const items=all.filter(x=>x.days>=0).sort((a,b)=>a.priority-b.priority||a.days-b.days||a.name.localeCompare(b.name,'fr'));
   const overdue=all.filter(x=>x.days<0).sort((a,b)=>a.days-b.days||a.name.localeCompare(b.name,'fr')).map(x=>({...x, priorityLabel:'Urgent'}));
-  return json({items,overdue});
+  const allActive=all;
+  return json({items,overdue,stats:{total:allActive.length,overdue:overdue.length,within30:allActive.filter(x=>x.days>=0&&x.days<=30).length,valid:allActive.filter(x=>x.days>30).length,extinguisher:allActive.filter(x=>x.kind==='extinguisher').length}});
 };

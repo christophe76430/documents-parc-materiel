@@ -4,6 +4,9 @@ import machines from '../../machines.json' with { type: 'json' };
 
 export const STORE = 'parc-documents';
 export const DRIVER_STORE = 'parc-chauffeurs';
+export const STATUS_STORE = 'parc-materiel-status';
+export const EXTINGUISHER_STORE = 'parc-extincteurs';
+export const ARCHIVE_STORE = 'parc-documents-archive';
 export const REGION = 'eu-central-1';
 export const TTL = 8 * 60 * 60 * 1000;
 
@@ -42,6 +45,44 @@ export function store(){
 export function driverStore(){
   return getStore({name:DRIVER_STORE,region:REGION,consistency:'strong'});
 }
+export function statusStore(){
+  return getStore({name:STATUS_STORE,region:REGION,consistency:'strong'});
+}
+export function extinguisherStore(){
+  return getStore({name:EXTINGUISHER_STORE,region:REGION,consistency:'strong'});
+}
+export function archiveStore(){
+  return getStore({name:ARCHIVE_STORE,region:REGION,consistency:'strong'});
+}
+export function hasExtinguisher(id){ return !!MACHINES[id] && (MACHINES[id].group==='pelles' || /^T\d+$/.test(id)); }
+export async function getExtinguisherDates(){
+  const ids=Object.keys(MACHINES).filter(hasExtinguisher);
+  const values=await Promise.all(ids.map(async id=>{
+    try{
+      const r=await extinguisherStore().get(`machine/${id}.json`,{type:'json',consistency:'strong'});
+      return r?.expiry ? [id,String(r.expiry)] : null;
+    }catch{return null;}
+  }));
+  return Object.fromEntries(values.filter(Boolean));
+}
+export async function getMachineStatus(id){
+  const key=`machine/${id}.json`;
+  try{
+    const r=await statusStore().get(key,{type:'json',consistency:'strong'});
+    return r && r.enabled!==false;
+  }catch{return true;}
+}
+export async function getMachineStatuses(){
+  const out={};
+  await Promise.all(Object.keys(MACHINES).map(async id=>{
+    try{
+      const r=await statusStore().get(`machine/${id}.json`,{type:'json',consistency:'strong'});
+      out[id]=r?.enabled!==false;
+    }catch{out[id]=true;}
+  }));
+  return out;
+}
+
 
 export function expectedTypes(m){
   if(!m) return [];
