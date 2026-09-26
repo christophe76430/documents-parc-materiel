@@ -54,7 +54,12 @@ export function extinguisherStore(){
 export function archiveStore(){
   return getStore({name:ARCHIVE_STORE,region:REGION,consistency:'strong'});
 }
-export function hasExtinguisher(id){ return !!MACHINES[id] && (MACHINES[id].group==='pelles' || /^T\d+$/.test(id)); }
+export function hasExtinguisher(id){
+  const m=MACHINES[id];
+  if(!m) return false;
+  if(/^(REM|RRA|RRAT|ANSEMS)/i.test(id) || /\bremorque\b/i.test(m.name)) return false;
+  return m.group==='pelles' || /^T\d+$/.test(id);
+}
 export async function getExtinguisherDates(){
   const ids=Object.keys(MACHINES).filter(hasExtinguisher);
   const values=await Promise.all(ids.map(async id=>{
