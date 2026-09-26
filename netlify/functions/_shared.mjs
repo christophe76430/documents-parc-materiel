@@ -36,6 +36,9 @@ export const TYPES = {
 export const DRIVER_CATEGORIES = {
   identite:{label:'Identité',icon:'👤'},
   formation:{label:'Formation',icon:'🎓'},
+  permis:{label:'Permis',icon:'🚗'},
+  carte_conducteur:{label:'Carte conducteur',icon:'🪪'},
+  badge:{label:'Badge',icon:'🪪'},
   divers:{label:'Divers',icon:'📂'}
 };
 
