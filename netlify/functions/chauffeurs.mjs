@@ -1,6 +1,6 @@
 import {driverStore,DRIVER_CATEGORIES,esc,html,parseCookies,validToken,makeToken,cookie,driverCodeMatches,hashSecret} from './_shared.mjs';
 export const config={path:'/chauffeurs'};
-async function listDrivers(){const {blobs}=await driverStore().list({prefix:'driver/'});const out=[];for(const b of blobs){if(!b.key.endsWith('.json'))continue;const d=await driverStore().get(b.key,{type:'json'}).catch(()=>null);if(d)out.push(d)}return out}
+async function listDrivers(){const {blobs}=await driverStore().list({prefix:'driver/'});const out=await Promise.all(blobs.filter(b=>b.key.endsWith('.json')).map(async b=>driverStore().get(b.key,{type:'json'}).catch(()=>null)));return out.filter(Boolean)}
 function login(error='', selectedId=''){
   const drivers = globalThis.__drivers || [];
   const selected = selectedId ? drivers.find(x=>x.id===selectedId && x.enabled!==false) : null;
@@ -9,35 +9,33 @@ function login(error='', selectedId=''){
   const intro = selected ? 'Entrez votre code personnel pour accéder à votre profil.' : 'Sélectionnez votre profil puis utilisez votre code personnel.';
   return html(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Espace salariés — THN</title><link rel="stylesheet" href="/style.css"></head><body><main><div class="box driver-login">${selected?`<p><a href="/chauffeurs">← Retour à la liste des salariés</a></p>`:''}<h1>${title}</h1><p>${intro}</p>${error?`<p class="bad">${esc(error)}</p>`:''}<form method="post">${target}<label>Code personnel</label><input name="code" type="password" required autocomplete="current-password"><button>Accéder à mon espace</button></form><p><a href="/">← Accueil</a></p></div></main></body></html>`)
 }
-async function getDriverPhotoDataUrl(d){
-  try{
-    const data=await driverStore().get(`photo/${d.id}`,{type:'arrayBuffer'});
-    if(!data)return '';
-    const meta=await driverStore().getMetadata(`photo/${d.id}`).catch(()=>null);
-    const type=meta?.metadata?.contentType||'image/jpeg';
-    return `data:${type};base64,${Buffer.from(data).toString('base64')}`;
-  }catch{return '';}
-}
 async function employeeHome(drivers){
   const enabled=drivers.filter(d=>d.enabled!==false).sort((a,b)=>String(a.name).localeCompare(String(b.name),'fr'));
-  const photoUrls=await Promise.all(enabled.map(getDriverPhotoDataUrl));
-  const cards=enabled.map((d,i)=>{
-    const src=photoUrls[i]||`/.netlify/functions/driver-photo?id=${encodeURIComponent(d.id)}&v=${encodeURIComponent(d.photoVersion||'1')}`;
+  // Ne pas télécharger les photos côté serveur : le navigateur les charge en parallèle.
+  // Cela accélère fortement l'affichage initial de la liste des salariés.
+  const cards=enabled.map((d)=>{
+    const src=`/.netlify/functions/driver-photo?id=${encodeURIComponent(d.id)}&v=${encodeURIComponent(d.photoVersion||'1')}`;
     const initial=esc((d.name||'?').trim().charAt(0).toUpperCase());
     return `<div class="employee-card"><button type="button" class="employee-photo-preview" data-photo="${src}" data-name="${esc(d.name)}" aria-label="Agrandir la photo de ${esc(d.name)}"><span class="employee-avatar"><img src="${src}" alt="Photo de ${esc(d.name)}" onerror="this.style.display='none';this.parentElement.classList.add('avatar-fallback');this.parentElement.textContent='${initial}'"></span></button><a class="employee-card-main" href="/chauffeurs?id=${encodeURIComponent(d.id)}"><strong>${esc(d.name)}</strong><small>Accéder à mon espace</small></a><a class="employee-arrow" href="/chauffeurs?id=${encodeURIComponent(d.id)}" aria-label="Accéder à l’espace de ${esc(d.name)}">→</a></div>`;
   }).join('');
-  const rows=[];
-  for(const d of enabled){
+  const perDriverRows=await Promise.all(enabled.map(async d=>{
+    const out=[];
     const mv=medicalVisitStatus(d.medicalVisitDate);
-    if(d.medicalVisitDate) rows.push({name:d.name,type:'Visite médicale',detail:'Visite périodique',date:d.medicalVisitDate,status:mv});
+    if(d.medicalVisitDate) out.push({name:d.name,type:'Visite médicale',detail:'Visite périodique',date:d.medicalVisitDate,status:mv});
     const {blobs}=await driverStore().list({prefix:`docs/${d.id}/`});
-    for(const b of blobs){
-      const meta=await driverStore().getMetadata(b.key).catch(()=>null); const m=meta?.metadata||{}; if(!m.expiry) continue;
+    const docs=await Promise.all(blobs.map(async b=>{
+      const meta=await driverStore().getMetadata(b.key).catch(()=>null);
+      return {b,m:meta?.metadata||{}};
+    }));
+    for(const {b,m} of docs){
+      if(!m.expiry) continue;
       const cat=b.key.split('/')[2]||'divers'; const info=medicalVisitStatus(m.expiry);
       const label=m.detail||m.label||DRIVER_CATEGORIES[cat]?.label||cat;
-      rows.push({name:d.name,type:DRIVER_CATEGORIES[cat]?.label||'Document',detail:label,date:m.expiry,status:info});
+      out.push({name:d.name,type:DRIVER_CATEGORIES[cat]?.label||'Document',detail:label,date:m.expiry,status:info});
     }
-  }
+    return out;
+  }));
+  const rows=perDriverRows.flat();
   rows.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
   const deadlineRows=rows.map(r=>`<tr><td><strong>${esc(r.name)}</strong></td><td>${esc(r.type)}</td><td>${esc(r.detail)}</td><td>${esc(formatDate(r.date))}</td><td><span class="table-status ${r.status.class}"><span class="dot ${r.status.class}"></span>${esc(r.status.label)}</span></td></tr>`).join('');
   return html(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Espaces salariés — THN</title><link rel="stylesheet" href="/style.css"></head><body><main><div class="employee-overview-grid"><section><div class="employee-home-head"><div><p><a href="/">← Accueil</a></p><h1>Espaces salariés</h1></div></div><div class="employee-list">${cards||'<div class="box"><p class="muted">Aucun salarié disponible.</p></div>'}</div></section><section class="box employee-all-deadlines"><div class="deadlines-head"><div><h2>📅 Échéances des salariés</h2><p class="muted">Visites médicales, formations et autres titres obligatoires</p></div><select class="employee-deadline-filter"><option>Tous les salariés</option>${enabled.map(d=>`<option>${esc(d.name)}</option>`).join('')}</select></div><div class="deadline-fixed-head"><table><thead><tr><th>Nom du salarié</th><th>Type d'échéance</th><th>Détail</th><th>Date d'échéance</th><th>Statut</th></tr></thead></table></div><div class="deadline-scroll-body employee-deadline-body"><table><tbody>${deadlineRows||'<tr><td colspan="5" class="muted">Aucune échéance renseignée.</td></tr>'}</tbody></table></div></section></div><div class="photo-lightbox" id="employeePhotoLightbox" hidden role="dialog" aria-modal="true" aria-label="Photo du salarié"><div class="photo-lightbox-backdrop" data-close-photo></div><div class="photo-lightbox-panel"><button type="button" class="photo-lightbox-close" data-close-photo aria-label="Fermer">×</button><img id="employeePhotoLarge" src="" alt=""><strong id="employeePhotoName"></strong></div></div></main><script>const sel=document.querySelector('.employee-deadline-filter');const body=document.querySelector('.employee-deadline-body tbody');if(sel&&body){const all=[...body.querySelectorAll('tr')];sel.addEventListener('change',()=>{const v=sel.value;all.forEach(r=>{r.style.display=!v||v==='Tous les salariés'||r.cells[0]?.innerText.trim()===v?'':'none';});});}const lightbox=document.getElementById('employeePhotoLightbox'),large=document.getElementById('employeePhotoLarge'),photoName=document.getElementById('employeePhotoName');document.querySelectorAll('.employee-photo-preview').forEach(btn=>btn.addEventListener('click',()=>{const src=btn.dataset.photo;if(!src||btn.querySelector('img')?.style.display==='none')return;large.src=src;large.alt='Photo de '+btn.dataset.name;photoName.textContent=btn.dataset.name;lightbox.hidden=false;document.body.classList.add('photo-modal-open');btn.blur();}));document.querySelectorAll('[data-close-photo]').forEach(el=>el.addEventListener('click',()=>{lightbox.hidden=true;large.src='';document.body.classList.remove('photo-modal-open');}));document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!lightbox.hidden){lightbox.hidden=true;large.src='';document.body.classList.remove('photo-modal-open');}});</script></body></html>`)

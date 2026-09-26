@@ -30,8 +30,13 @@ function extinguisherDate(expiry){
 }
 
 export default async()=>{
-  const active=await getMachineStatuses();
-  const {blobs}=await store().list({prefix:''});
+  // Charger en parallèle les trois sources principales pour réduire le temps d'attente initial.
+  const [active, listResult, extinguisherDates] = await Promise.all([
+    getMachineStatuses(),
+    store().list({prefix:''}),
+    getExtinguisherDates()
+  ]);
+  const {blobs} = listResult;
   const candidates=blobs.filter(b=>MACHINES[b.key.split('/')[0]]);
   const rows=await Promise.all(candidates.map(async b=>{
     const p=b.key.split('/');
@@ -68,7 +73,6 @@ export default async()=>{
       priorityLabel:s.label
     };
   }));
-  const extinguisherDates=await getExtinguisherDates();
   for(const [id,expiry] of Object.entries(extinguisherDates)){
     if(active[id]===false || !hasExtinguisher(id)) continue;
     const date=extinguisherDate(expiry);
@@ -144,5 +148,5 @@ export default async()=>{
     return (a.days??0)-(b.days??0)||a.name.localeCompare(b.name,'fr');
   });
   const allActive=all;
-  return json({items,overdue,stats:{total:allActive.length,overdue:all.filter(x=>x.days<0).length,missing:missing.length,within30:allActive.filter(x=>x.days>=0&&x.days<=30).length,valid:allActive.filter(x=>x.days>30).length,extinguisher:allActive.filter(x=>x.kind==='extinguisher').length}});
+  return json({items,overdue,stats:{total:allActive.length,overdue:all.filter(x=>x.days<0).length,missing:missing.length,within30:allActive.filter(x=>x.days>=0&&x.days<=30).length,valid:allActive.filter(x=>x.days>30).length,extinguisher:allActive.filter(x=>x.kind==='extinguisher').length}},200,{'Cache-Control':'public, max-age=20, stale-while-revalidate=60'});
 };
