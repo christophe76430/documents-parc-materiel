@@ -4,7 +4,7 @@ export const config={path:'/machine/:id'};
 const NO_EXPIRY=new Set(['carte','barreRouge','divers','doc','devis']);
 
 function page(m,body,headers={}){
-  return html(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(m.name)} — Parc THN</title><link rel="stylesheet" href="/style.css"></head><body><main><p><a href="/">← Accueil</a></p><h1>🏗️ ${esc(m.name)}</h1>${body}</main></body></html>`,200,headers)
+  return html(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(m.name)} — Parc THN</title><link rel="stylesheet" href="/style.css"><style>.machine-qr{display:flex;align-items:center;gap:18px;margin:0 0 16px;padding:16px 18px;background:#fff;border:1px solid #d8e6f4;border-radius:14px;box-shadow:0 2px 8px rgba(15,47,82,.06)}.machine-qr img{width:110px;height:110px;object-fit:contain;flex:none}.machine-qr strong{display:block;color:#0f2f52;font-size:1rem}.machine-qr p{margin:6px 0 0;color:#667b91;line-height:1.45}.machine-qr a{color:#1769d1}@media(max-width:560px){.machine-qr{align-items:flex-start}.machine-qr img{width:92px;height:92px}}@media print{.machine-qr{box-shadow:none}}</style></head><body><main><p><a href="/">← Accueil</a></p><h1>🏗️ ${esc(m.name)}</h1>${body}</main></body></html>`,200,headers)
 }
 
 function login(m,error=''){
@@ -74,8 +74,11 @@ function filterTable(m){
   return `<div class="box"><h2>🔧 Filtration</h2><p class="muted">${esc(data.source_label||m.name)}</p><div style="overflow-x:auto"><table class="filter-table"><thead><tr><th>Fonction</th><th>Référence</th></tr></thead><tbody>${rows}</tbody></table></div>${data.adblue?`<p><b>AdBlue :</b> ${esc(data.adblue)}</p>`:''}${data.note?`<p class="muted"><b>⚠️ Remarque :</b> ${esc(data.note)}</p>`:''}</div>`
 }
 
-function machineSummary(m,enabled){
-  return `<div class="box machine-summary"><div><span class="summary-label">Catégorie</span><strong>${esc(m.group==='pelles'?'Matériel rail-route':m.group==='vehicules'?'Véhicule':'Camion')}</strong></div></div>`;
+function machineSummary(m,enabled,origin){
+  const showQr=m.group==='pelles';
+  const originHint='QR code de cette fiche';
+  const qr=showQr?`<div class="machine-qr"><img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(`${origin}/machine/${encodeURIComponent(m.id)}`)}" alt="QR code pour ${esc(m.name)}"><div><strong>${originHint}</strong><p>Scannez ce QR code pour ouvrir directement la fiche de cet engin ou de cette remorque.</p></div></div>`:'';
+  return `${qr}<div class="box machine-summary"><div><span class="summary-label">Catégorie</span><strong>${esc(m.group==='pelles'?'Matériel rail-route':m.group==='vehicules'?'Véhicule':'Camion')}</strong></div></div>`;
 }
 
 function docs(m,items,extDates={}){
@@ -133,10 +136,10 @@ export default async(req,context)=>{
   const id=String(context.params?.id||'').toUpperCase(),m=MACHINES[id];
   if(!m)return html('<h1>Matériel introuvable</h1>',404);
   const c=parseCookies(req);
-  if(validToken(c.PARC_AUTH,id)||validToken(c.PARC_ADMIN,'ADMIN')){const enabled=await getMachineStatus(id); const extDates=await getExtinguisherDates(); return page(m,machineSummary(m,enabled)+docs(m,await loadItems(id),extDates),validToken(c.PARC_AUTH,id)?{'Set-Cookie':cookie('PARC_AUTH',makeToken(id))}:{});}
+  if(validToken(c.PARC_AUTH,id)||validToken(c.PARC_ADMIN,'ADMIN')){const enabled=await getMachineStatus(id); const extDates=await getExtinguisherDates(); const origin=new URL(req.url).origin; return page(m,machineSummary(m,enabled,origin)+docs(m,await loadItems(id),extDates),validToken(c.PARC_AUTH,id)?{'Set-Cookie':cookie('PARC_AUTH',makeToken(id))}:{});}
   if(req.method==='POST'){
     const fd=await req.formData();
-    if(String(fd.get('password')||'')===(process.env.PARC_PASSWORD||'')){const enabled=await getMachineStatus(id); const extDates=await getExtinguisherDates(); return page(m,machineSummary(m,enabled)+docs(m,await loadItems(id),extDates),{'Set-Cookie':cookie('PARC_AUTH',makeToken(id))});}
+    if(String(fd.get('password')||'')===(process.env.PARC_PASSWORD||'')){const enabled=await getMachineStatus(id); const extDates=await getExtinguisherDates(); const origin=new URL(req.url).origin; return page(m,machineSummary(m,enabled,origin)+docs(m,await loadItems(id),extDates),{'Set-Cookie':cookie('PARC_AUTH',makeToken(id))});}
     return login(m,'Mot de passe incorrect.')
   }
   return login(m)
