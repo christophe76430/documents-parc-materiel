@@ -293,3 +293,8 @@ main:not(.home-main):not(.category-main){max-width:1100px;margin:38px auto;paddi
 @media print{.home-header,.category-grid,.global-search,.fleet-dashboard,.site-footer,.deadlines-head,.overdue-deadlines{display:none!important}.deadline-fixed-head,.deadline-scroll-body{border:0!important;height:auto!important;overflow:visible!important}.deadline-fixed-head{display:block!important}.deadline-scroll-body{display:block!important}.deadlines{display:block!important}.deadline-scroll-body table{min-width:0!important}}
 
 .admin-alerts{border-left:4px solid #2f74b5}.admin-alert-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-items:stretch}.admin-alert-grid>div{background:#f7fbff;border:1px solid #dbe7f2;border-radius:10px;padding:12px}.admin-alert-grid strong{display:block;font-size:24px;color:#173b61}.admin-alert-grid span{font-size:12px;color:#607995}.admin-export{display:flex;align-items:center;justify-content:center;text-decoration:none;border-radius:10px;background:#1976d2;color:#fff;font-weight:700;padding:10px}.machine-summary{display:grid;grid-template-columns:1fr;gap:12px}.machine-summary>div{display:flex;flex-direction:column;gap:4px;padding:12px;border:1px solid #dbe7f2;border-radius:10px;background:#f9fcff}.summary-label{font-size:12px;color:#607995}.summary-state.ok{color:#16813a}.summary-state.off{color:#b00020}@media(max-width:700px){.admin-alert-grid{grid-template-columns:1fr 1fr}.machine-summary{grid-template-columns:1fr 1fr}}
+
+
+/* Pictogrammes catégories - THN */
+.category-icon { display:flex; align-items:center; justify-content:center; flex:0 0 56px; color:#063b78; }
+.category-icon svg { width:48px; height:48px; display:block; }
