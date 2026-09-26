@@ -1,4 +1,4 @@
-import {MACHINES,TYPES,store,status,json,getMachineStatuses,getExtinguisherDates,hasExtinguisher} from './_shared.mjs';
+import {MACHINES,TYPES,store,status,json,getMachineStatuses,getExtinguisherDates,hasExtinguisher,expectedTypes} from './_shared.mjs';
 export const config={path:'/api/dashboard'};
 
 function parseExpiryFromFilename(filename){
@@ -91,8 +91,58 @@ export default async()=>{
     });
   }
   const all=rows.filter(Boolean);
+
+  // Ajouter dans la zone des échéances dépassées les échéances obligatoires
+  // dont le document ou la date n'est pas renseigné. Elles ne sont pas comptées
+  // comme des échéances réellement dépassées : leur statut est "À renseigner".
+  const existingByType=new Set(all.map(x=>`${x.id}::${x.type}`));
+  const missing=[];
+  for(const [id,m] of Object.entries(MACHINES)){
+    if(active[id]===false) continue;
+    for(const type of expectedTypes(m)){
+      if(['carte','barreRouge','divers','doc','devis'].includes(type)) continue;
+      if(existingByType.has(`${id}::${type}`)) continue;
+      missing.push({
+        id,
+        name:m.name,
+        category:m.group==='pelles'?'Matériel rail-route':m.group==='vehicules'?'Véhicule':'Camion',
+        type,
+        label:TYPES[type]?.label||type,
+        expiry:'',
+        days:null,
+        status:{class:'neutral',label:'À renseigner'},
+        priority:4,
+        priorityLabel:'À renseigner',
+        kind:'missing'
+      });
+    }
+    if(hasExtinguisher(id) && !extinguisherDates[id]){
+      missing.push({
+        id,
+        name:m.name,
+        category:m.group==='pelles'?'Matériel rail-route':'Camion',
+        type:'extinguisher',
+        label:'Extincteur',
+        expiry:'',
+        days:null,
+        status:{class:'neutral',label:'À renseigner'},
+        priority:4,
+        priorityLabel:'À renseigner',
+        kind:'missing-extinguisher'
+      });
+    }
+  }
+
   const items=all.filter(x=>x.days>=0).sort((a,b)=>a.priority-b.priority||a.days-b.days||a.name.localeCompare(b.name,'fr'));
-  const overdue=all.filter(x=>x.days<0).sort((a,b)=>a.days-b.days||a.name.localeCompare(b.name,'fr')).map(x=>({...x, priorityLabel:'Urgent'}));
+  const overdue=[
+    ...all.filter(x=>x.days<0).map(x=>({...x,priorityLabel:'Urgent'})),
+    ...missing
+  ].sort((a,b)=>{
+    if(a.kind?.startsWith('missing')!==b.kind?.startsWith('missing')) return a.kind?.startsWith('missing')?1:-1;
+    if(a.days==null && b.days!=null) return 1;
+    if(a.days!=null && b.days==null) return -1;
+    return (a.days??0)-(b.days??0)||a.name.localeCompare(b.name,'fr');
+  });
   const allActive=all;
-  return json({items,overdue,stats:{total:allActive.length,overdue:overdue.length,within30:allActive.filter(x=>x.days>=0&&x.days<=30).length,valid:allActive.filter(x=>x.days>30).length,extinguisher:allActive.filter(x=>x.kind==='extinguisher').length}});
+  return json({items,overdue,stats:{total:allActive.length,overdue:all.filter(x=>x.days<0).length,missing:missing.length,within30:allActive.filter(x=>x.days>=0&&x.days<=30).length,valid:allActive.filter(x=>x.days>30).length,extinguisher:allActive.filter(x=>x.kind==='extinguisher').length}});
 };
