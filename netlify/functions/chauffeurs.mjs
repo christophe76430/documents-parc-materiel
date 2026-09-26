@@ -9,9 +9,22 @@ function login(error='', selectedId=''){
   const intro = selected ? 'Entrez votre code personnel pour accéder à votre profil.' : 'Sélectionnez votre profil puis utilisez votre code personnel.';
   return html(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Espace salariés — THN</title><link rel="stylesheet" href="/style.css"></head><body><main><div class="box driver-login">${selected?`<p><a href="/chauffeurs">← Retour à la liste des salariés</a></p>`:''}<h1>${title}</h1><p>${intro}</p>${error?`<p class="bad">${esc(error)}</p>`:''}<form method="post">${target}<label>Code personnel</label><input name="code" type="password" required autocomplete="current-password"><button>Accéder à mon espace</button></form><p><a href="/">← Accueil</a></p></div></main></body></html>`)
 }
-function employeeHome(drivers){
+async function getDriverPhotoDataUrl(d){
+  try{
+    const data=await driverStore().get(`photo/${d.id}`,{type:'arrayBuffer'});
+    if(!data)return '';
+    const meta=await driverStore().getMetadata(`photo/${d.id}`).catch(()=>null);
+    const type=meta?.metadata?.contentType||'image/jpeg';
+    return `data:${type};base64,${Buffer.from(data).toString('base64')}`;
+  }catch{return '';}
+}
+async function employeeHome(drivers){
   const enabled=drivers.filter(d=>d.enabled!==false).sort((a,b)=>String(a.name).localeCompare(String(b.name),'fr'));
-  const cards=enabled.map(d=>`<a class="employee-card" href="/chauffeurs?id=${encodeURIComponent(d.id)}"><span class="employee-avatar"><img src="/.netlify/functions/driver-photo?id=${encodeURIComponent(d.id)}&v=${encodeURIComponent(d.photoVersion||'1')}" alt="Photo de ${esc(d.name)}"></span><span class="employee-card-main"><strong>${esc(d.name)}</strong><small>Accéder à mon espace</small></span><span class="employee-arrow">→</span></a>`).join('');
+  const photoUrls=await Promise.all(enabled.map(getDriverPhotoDataUrl));
+  const cards=enabled.map((d,i)=>{
+    const src=photoUrls[i]||`/.netlify/functions/driver-photo?id=${encodeURIComponent(d.id)}&v=${encodeURIComponent(d.photoVersion||'1')}`;
+    return `<a class="employee-card" href="/chauffeurs?id=${encodeURIComponent(d.id)}"><span class="employee-avatar"><img src="${src}" alt="Photo de ${esc(d.name)}"></span><span class="employee-card-main"><strong>${esc(d.name)}</strong><small>Accéder à mon espace</small></span><span class="employee-arrow">→</span></a>`;
+  }).join('');
   const deadlineRows=enabled.map(d=>{const mv=medicalVisitStatus(d.medicalVisitDate);return `<tr><td><strong>${esc(d.name)}</strong></td><td>Visite médicale</td><td>${esc(formatDate(d.medicalVisitDate))}</td><td><span class="table-status ${mv.class}"><span class="dot ${mv.class}"></span>${esc(mv.label)}</span></td></tr>`}).join('');
   return html(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Espaces salariés — THN</title><link rel="stylesheet" href="/style.css"></head><body><main><div class="employee-home-head"><div><p><a href="/">← Accueil</a></p><p class="eyebrow">Espace personnel THN</p><h1>Espaces salariés</h1><p class="muted">Choisissez votre nom pour accéder à votre page d’accueil personnelle.</p></div><div class="employee-home-badge">👥 ${enabled.length} salarié${enabled.length>1?'s':''}</div></div><div class="box employee-selection-intro"><h2>👷 Sélectionnez votre profil</h2><p class="muted">Votre code personnel sera demandé après votre sélection. Les informations personnelles détaillées restent accessibles uniquement dans l’espace du salarié.</p></div><div class="employee-list">${cards||'<div class="box"><p class="muted">Aucun salarié disponible.</p></div>'}</div><section class="box employee-all-deadlines"><div class="deadlines-head"><div><h2>📅 Échéances des salariés</h2><p class="muted">Vue d’ensemble des prochaines visites médicales de tous les salariés.</p></div><div class="employee-home-badge">${enabled.filter(d=>d.medicalVisitDate).length} date${enabled.filter(d=>d.medicalVisitDate).length>1?'s':''}</div></div><div class="deadline-fixed-head"><table><thead><tr><th>Salarié</th><th>Échéance</th><th>Date</th><th>Statut</th></tr></thead></table></div><div class="deadline-scroll-body employee-deadline-body"><table><tbody>${deadlineRows||'<tr><td colspan="4" class="muted">Aucune visite médicale renseignée.</td></tr>'}</tbody></table></div></section></main></body></html>`)
 }
