@@ -1,4 +1,4 @@
-# Installation THN – version V53
+# Installation THN – version V57
 
 1. Utiliser cette version sur la branche de test `nouvelle-version-thn`.
 2. Verifier que le Deploy Preview Netlify est `Ready`.
