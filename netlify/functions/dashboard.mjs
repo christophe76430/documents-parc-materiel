@@ -38,7 +38,18 @@ export default async()=>{
   ]);
   const {blobs} = listResult;
   const candidates=blobs.filter(b=>MACHINES[b.key.split('/')[0]]);
-  const rows=await Promise.all(candidates.map(async b=>{
+  const candidatesMeta=await Promise.all(candidates.map(async b=>({b,meta:(await store().getMetadata(b.key).catch(()=>null))?.metadata||{}})));
+  const latestExpiry=new Map();
+  for(const {b,meta} of candidatesMeta){
+    const p=b.key.split('/');
+    const id=p[0];
+    const type=meta.type||p[1]||'';
+    if(['carte','barreRouge','divers','doc','devis'].includes(type)) continue;
+    const k=`${id}::${type}`;
+    const prev=latestExpiry.get(k);
+    if(!prev || String(meta.uploadedAt||'')>String(prev.meta.uploadedAt||'')) latestExpiry.set(k,{b,meta});
+  }
+  const rows=await Promise.all([...latestExpiry.values()].map(async ({b,meta})=>{
     const p=b.key.split('/');
     const id=p[0];
     if(active[id]===false)return null;
@@ -46,11 +57,7 @@ export default async()=>{
     const typeFromKey=p[1]||'';
     // First use the date convention in the filename; otherwise read stored metadata.
     let expiry=parseExpiryFromFilename(filename);
-    let meta={};
-    if(!expiry){
-      meta=(await store().getMetadata(b.key).catch(()=>null))?.metadata||{};
-      expiry=meta.expiry||'';
-    }
+    if(!expiry) expiry=meta.expiry||'';
     if(!expiry)return null;
     const type=meta.type||typeFromKey;
     if(['carte','barreRouge','divers','doc','devis'].includes(type))return null;

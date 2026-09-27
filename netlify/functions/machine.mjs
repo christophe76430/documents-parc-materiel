@@ -13,15 +13,24 @@ function login(m,error=''){
 
 async function loadItems(id){
   const {blobs}=await store().list({prefix:`${id}/`});
-  return Promise.all(blobs.map(async b=>{
+  const raw=await Promise.all(blobs.map(async b=>{
     const p=b.key.split('/');
-    let type=p[1]||'',label=p.slice(2).join('/')||p[1],expiry='';
+    let type=p[1]||'',label=p.slice(2).join('/')||p[1],expiry='',uploadedAt='';
     const meta=await store().getMetadata(b.key).catch(()=>null);
     type=meta?.metadata?.type||type;
     label=meta?.metadata?.label||label;
     expiry=meta?.metadata?.expiry||'';
-    return {key:b.key,type,label,expiry}
-  }))
+    uploadedAt=meta?.metadata?.uploadedAt||'';
+    return {key:b.key,type,label,expiry,uploadedAt}
+  }));
+  const byType=new Map(),out=[];
+  for(const x of raw){
+    if(NO_EXPIRY.has(x.type)){out.push(x);continue;}
+    const prev=byType.get(x.type);
+    if(!prev || String(x.uploadedAt||'')>String(prev.uploadedAt||'')) byType.set(x.type,x);
+  }
+  out.push(...byType.values());
+  return out;
 }
 
 function dot(state){
