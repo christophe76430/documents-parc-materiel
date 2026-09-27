@@ -124,6 +124,68 @@ async function postForm(fields){
   return data||{ok:true};
 }
 
+// Netlify Functions limite les requêtes à 6 Mo et les uploads binaires à ~4,5 Mo utiles.
+// Les fichiers de plus de 3 Mo sont donc envoyés par fragments de 3 Mo maximum.
+const LARGE_FILE_THRESHOLD = 3 * 1024 * 1024;
+const LARGE_CHUNK_SIZE = 3 * 1024 * 1024;
+
+async function readErrorResponse(r){
+  const txt=await r.text();
+  let data=null; try{data=JSON.parse(txt);}catch{}
+  return data?.message || txt || `HTTP ${r.status}`;
+}
+
+async function uploadLargeFile(password, meta, file, onProgress){
+  const startFd=new FormData();
+  startFd.append('action','bulk-large-start');
+  startFd.append('password',password);
+  startFd.append('meta',JSON.stringify({...meta,fileName:file.name,mime:file.type||'application/octet-stream',size:file.size}));
+  const sr=await fetch('/.netlify/functions/admin',{method:'POST',body:startFd,credentials:'same-origin'});
+  if(!sr.ok)throw new Error(await readErrorResponse(sr));
+  const sd=await sr.json(); const uploadId=sd.uploadId;
+  const totalChunks=Math.ceil(file.size/LARGE_CHUNK_SIZE);
+  try{
+    for(let index=0;index<totalChunks;index++){
+      const startByte=index*LARGE_CHUNK_SIZE;
+      const endByte=Math.min(file.size,startByte+LARGE_CHUNK_SIZE);
+      const chunk=file.slice(startByte,endByte,file.type||'application/octet-stream');
+      const fd=new FormData(); fd.append('action','bulk-large-chunk'); fd.append('password',password); fd.append('uploadId',uploadId); fd.append('index',String(index)); fd.append('file',chunk,`${file.name}.part${index}`);
+      const r=await fetch('/.netlify/functions/admin',{method:'POST',body:fd,credentials:'same-origin'});
+      if(!r.ok)throw new Error(`fragment ${index+1}/${totalChunks}: ${await readErrorResponse(r)}`);
+      onProgress?.(index+1,totalChunks);
+    }
+    const fin=new FormData(); fin.append('action','bulk-large-finish'); fin.append('password',password); fin.append('uploadId',uploadId); fin.append('totalChunks',String(totalChunks)); fin.append('totalBytes',String(file.size));
+    const fr=await fetch('/.netlify/functions/admin',{method:'POST',body:fin,credentials:'same-origin'});
+    if(!fr.ok)throw new Error(await readErrorResponse(fr));
+    return await fr.json();
+  }catch(e){
+    try{await postForm({action:'bulk-large-abort',password,uploadId});}catch{}
+    throw e;
+  }
+}
+
+async function uploadMachineItem(item,password){
+  if(item.f.size>LARGE_FILE_THRESHOLD){
+    return uploadLargeFile(password,{target:'machine',id:item.id,type:item.type},item.f,(n,total)=>{status.textContent=`Fragments ${n}/${total} — ${item.path}`;});
+  }
+  const fd=new FormData(); fd.append('password',password); fd.append('id',item.id); fd.append('type',item.type); fd.append('file',item.f,item.f.name); fd.append('bulk','1');
+  const r=await fetch('/.netlify/functions/admin',{method:'POST',body:fd,credentials:'same-origin'});
+  if(!r.ok)throw new Error(await readErrorResponse(r));
+  return {ok:true};
+}
+
+async function uploadDriverItem(item,password){
+  const meta={target:'driver',driverName:item.info.name,cat:item.info.cat,detail:item.info.detail,expiry:item.info.expiry,kind:item.info.kind};
+  if(item.f.size>LARGE_FILE_THRESHOLD){
+    return uploadLargeFile(password,meta,item.f,(n,total)=>{status.textContent=`Fragments ${n}/${total} — ${item.path}`;});
+  }
+  const fd=new FormData();
+  fd.append('action','bulk-driver'); fd.append('password',password); fd.append('driverName',item.info.name); fd.append('cat',item.info.cat); fd.append('detail',item.info.detail); fd.append('expiry',item.info.expiry); fd.append('kind',item.info.kind); fd.append('file',item.f,item.f.name);
+  const r=await fetch('/.netlify/functions/admin',{method:'POST',body:fd,credentials:'same-origin'});
+  if(!r.ok)throw new Error(await readErrorResponse(r));
+  return await r.json().catch(()=>({ok:true}));
+}
+
 if(start)start.addEventListener('click',async()=>{
   const files=[...filesInput.files].filter(f=>!(SKIP.test(f.webkitRelativePath||f.name)));
   const password=document.getElementById('bulk-password').value;
@@ -145,7 +207,9 @@ if(start)start.addEventListener('click',async()=>{
         if(id){machineIds.add(id); machineFiles.push({f,path,id,type:machineTypeFromPath(path)});} else unknown.push(path);
       }
     }
+    const largeCount=[...machineFiles,...driverFiles].filter(x=>x.f.size>LARGE_FILE_THRESHOLD).length;
     log.textContent+=`Pré-analyse : ${machineFiles.length} documents matériel, ${driverFiles.length} documents salariés, ${driverNames.size} salarié(s), ${unknown.length} fichier(s) ignoré(s).\n`;
+    if(largeCount) log.textContent+=`INFO : ${largeCount} fichier(s) volumineux seront importés par fragments pour éviter la limite Netlify.\n`;
     if(unknown.length){ log.textContent+=unknown.slice(0,40).map(x=>'IGNORÉ : '+x).join('\n')+'\n'; if(unknown.length>40)log.textContent+=`… ${unknown.length-40} autres fichiers ignorés.\n`; }
     const replace=!!replaceBox?.checked;
     if(replace){
@@ -167,22 +231,18 @@ if(start)start.addEventListener('click',async()=>{
     let total=machineFiles.length+driverFiles.length, done=0, ok=0, fail=0;
     for(const item of machineFiles){
       done++; status.textContent=`Import ${done}/${total} — ${item.path}`;
-      const fd=new FormData(); fd.append('password',password); fd.append('id',item.id); fd.append('type',item.type); fd.append('file',item.f,item.f.name); fd.append('bulk','1');
       try{
-        const r=await fetch('/.netlify/functions/admin',{method:'POST',body:fd,credentials:'same-origin'});
-        if(r.ok){ok++;log.textContent+=`OK : ${item.path}\n`;}else{fail++;log.textContent+=`ERREUR HTTP ${r.status} : ${item.path}\n`;}
-      }catch(e){fail++;log.textContent+=`ERREUR réseau : ${item.path} — ${e.message}\n`;}
+        const result=await uploadMachineItem(item,password);
+        ok++; log.textContent+=`OK : ${item.path}${item.f.size>LARGE_FILE_THRESHOLD?' — import fragmenté':''}\n`;
+      }catch(e){fail++;log.textContent+=`ERREUR : ${item.path} — ${e.message}\n`;}
       log.scrollTop=log.scrollHeight;
     }
     for(const item of driverFiles){
       done++; status.textContent=`Import ${done}/${total} — ${item.path}`;
-      const fd=new FormData();
-      fd.append('action','bulk-driver'); fd.append('password',password); fd.append('driverName',item.info.name); fd.append('cat',item.info.cat); fd.append('detail',item.info.detail); fd.append('expiry',item.info.expiry); fd.append('kind',item.info.kind); fd.append('file',item.f,item.f.name);
       try{
-        const r=await fetch('/.netlify/functions/admin',{method:'POST',body:fd,credentials:'same-origin'}); const txt=await r.text(); let d=null;try{d=JSON.parse(txt);}catch{}
-        if(r.ok){ok++;log.textContent+=`OK : ${item.path}${d?.createdCode?' — code '+d.createdCode:''}\n`;}
-        else{fail++;log.textContent+=`ERREUR HTTP ${r.status} : ${item.path} — ${txt}\n`;}
-      }catch(e){fail++;log.textContent+=`ERREUR réseau : ${item.path} — ${e.message}\n`;}
+        const d=await uploadDriverItem(item,password);
+        ok++; log.textContent+=`OK : ${item.path}${d?.createdCode?' — code '+d.createdCode:''}${item.f.size>LARGE_FILE_THRESHOLD?' — import fragmenté':''}\n`;
+      }catch(e){fail++;log.textContent+=`ERREUR : ${item.path} — ${e.message}\n`;}
       log.scrollTop=log.scrollHeight;
     }
     if(replace && fail===0){

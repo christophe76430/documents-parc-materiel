@@ -7,6 +7,7 @@ const DRIVER_STORE = 'parc-chauffeurs';
 const STATUS_STORE = 'parc-materiel-status';
 const EXTINGUISHER_STORE = 'parc-extincteurs';
 const ARCHIVE_STORE = 'parc-documents-archive';
+const IMPORT_TMP_STORE = 'parc-import-tmp';
 const REGION = 'eu-central-1';
 const TTL = 8 * 60 * 60 * 1000;
 
@@ -45,6 +46,7 @@ const driverStore = () => getStore({name:DRIVER_STORE,region:REGION,consistency:
 const statusStore = () => getStore({name:STATUS_STORE,region:REGION,consistency:'strong'});
 const extinguisherStore = () => getStore({name:EXTINGUISHER_STORE,region:REGION,consistency:'strong'});
 const archiveStore = () => getStore({name:ARCHIVE_STORE,region:REGION,consistency:'strong'});
+const importTmpStore = () => getStore({name:IMPORT_TMP_STORE,region:REGION,consistency:'strong'});
 const hasExtinguisher = id => { const m=MACHINES[id]; if(!m) return false; if(/^(REM|RRA|RRAT|ANSEMS)/i.test(id) || /\bremorque\b/i.test(m.name)) return false; return m.group==='pelles' || /^T\d+$/.test(id); };
 async function getExtinguisherDates(){
   const ids=Object.keys(MACHINES).filter(hasExtinguisher);
@@ -189,7 +191,7 @@ async function deleteDriverCompletely(id){
   try{await driverStore().delete(`photo/${id}`);}catch{}
   try{await driverStore().delete(`driver/${id}.json`);}catch{}
 }
-function shell(body){return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration THN</title><link rel="stylesheet" href="/style.css"><style>.driver-admin-row{padding:10px 0;border-bottom:1px solid #e5edf5}.driver-admin-row:last-child{border-bottom:0}.medical-date-form{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.medical-date-form label{margin:0}.medical-date-form input{min-width:170px}.medical-visit-admin{display:flex;justify-content:space-between;gap:16px;align-items:end;padding:14px 16px;margin:10px 0 16px;border:1px solid #d8e6f4;border-radius:12px;background:#f7fbff}.medical-visit-admin h4{margin:0 0 4px}.medical-visit-admin .medical-date-form{margin:0}.doc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.replace-form{margin:0}.replace{background:#1976d2;color:#fff}.doc-card form{margin:0}.doc-card button{margin:0}.employee-admin-box{overflow:hidden}.employee-admin-head,.employee-list-head,.driver-admin-main{display:flex;justify-content:space-between;gap:16px;align-items:center}.employee-count{background:#eef6ff;color:#1264b0;border-radius:999px;padding:7px 12px;font-weight:700}.employee-add-card{margin:18px 0;padding:18px;border:1px solid #d8e6f4;border-radius:14px;background:linear-gradient(180deg,#f8fbff,#fff)}.employee-add-form{display:grid;grid-template-columns:1.3fr 1fr auto;gap:12px;align-items:end;margin-top:14px}.code-field{display:flex;gap:8px}.code-field input{flex:1}.secondary{background:#eef6ff;color:#1264b0}.primary{background:#1769d1;color:#fff}.employee-list-head{margin-top:22px}.employee-list-head input{max-width:280px}.driver-admin-row{padding:14px 0;border-bottom:1px solid #e5edf5}.driver-admin-row:last-child{border-bottom:0}.driver-name{margin:0 0 3px}.small{font-size:.86rem}.medical-date-form{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.medical-date-form label{margin:0}.medical-date-form input{min-width:170px}.driver-photo-admin{display:flex;align-items:center;gap:14px;min-width:260px}.driver-photo-thumb{width:58px;height:58px;border-radius:50%;object-fit:cover;border:2px solid #d7e5f2;background:#eef6ff}.driver-photo-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.driver-photo-form input[type=file]{max-width:220px}.photo-hint{font-size:.8rem;color:#6b8299}.employee-add-form{grid-template-columns:1.2fr 1fr 1.1fr auto}.employee-add-form input[type=file]{max-width:240px}.driver-doc-form{display:grid;grid-template-columns:1fr 1.2fr 1fr auto;gap:10px;align-items:end}.driver-doc-form label{margin:0}.driver-doc-form input,.driver-doc-form select{min-width:0}@media(max-width:850px){.driver-doc-form{grid-template-columns:1fr 1fr}.driver-doc-form button{grid-column:1/-1}}</style></head><body><main>${body}<div class="site-footer-copy" style="text-align:center;padding:18px;color:#6b7f95">THN — Administration &nbsp; | &nbsp; Version <strong>V87</strong></div></main></body></html>`;}
+function shell(body){return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration THN</title><link rel="stylesheet" href="/style.css"><style>.driver-admin-row{padding:10px 0;border-bottom:1px solid #e5edf5}.driver-admin-row:last-child{border-bottom:0}.medical-date-form{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.medical-date-form label{margin:0}.medical-date-form input{min-width:170px}.medical-visit-admin{display:flex;justify-content:space-between;gap:16px;align-items:end;padding:14px 16px;margin:10px 0 16px;border:1px solid #d8e6f4;border-radius:12px;background:#f7fbff}.medical-visit-admin h4{margin:0 0 4px}.medical-visit-admin .medical-date-form{margin:0}.doc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.replace-form{margin:0}.replace{background:#1976d2;color:#fff}.doc-card form{margin:0}.doc-card button{margin:0}.employee-admin-box{overflow:hidden}.employee-admin-head,.employee-list-head,.driver-admin-main{display:flex;justify-content:space-between;gap:16px;align-items:center}.employee-count{background:#eef6ff;color:#1264b0;border-radius:999px;padding:7px 12px;font-weight:700}.employee-add-card{margin:18px 0;padding:18px;border:1px solid #d8e6f4;border-radius:14px;background:linear-gradient(180deg,#f8fbff,#fff)}.employee-add-form{display:grid;grid-template-columns:1.3fr 1fr auto;gap:12px;align-items:end;margin-top:14px}.code-field{display:flex;gap:8px}.code-field input{flex:1}.secondary{background:#eef6ff;color:#1264b0}.primary{background:#1769d1;color:#fff}.employee-list-head{margin-top:22px}.employee-list-head input{max-width:280px}.driver-admin-row{padding:14px 0;border-bottom:1px solid #e5edf5}.driver-admin-row:last-child{border-bottom:0}.driver-name{margin:0 0 3px}.small{font-size:.86rem}.medical-date-form{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.medical-date-form label{margin:0}.medical-date-form input{min-width:170px}.driver-photo-admin{display:flex;align-items:center;gap:14px;min-width:260px}.driver-photo-thumb{width:58px;height:58px;border-radius:50%;object-fit:cover;border:2px solid #d7e5f2;background:#eef6ff}.driver-photo-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.driver-photo-form input[type=file]{max-width:220px}.photo-hint{font-size:.8rem;color:#6b8299}.employee-add-form{grid-template-columns:1.2fr 1fr 1.1fr auto}.employee-add-form input[type=file]{max-width:240px}.driver-doc-form{display:grid;grid-template-columns:1fr 1.2fr 1fr auto;gap:10px;align-items:end}.driver-doc-form label{margin:0}.driver-doc-form input,.driver-doc-form select{min-width:0}@media(max-width:850px){.driver-doc-form{grid-template-columns:1fr 1fr}.driver-doc-form button{grid-column:1/-1}}</style></head><body><main>${body}<div class="site-footer-copy" style="text-align:center;padding:18px;color:#6b7f95">THN — Administration &nbsp; | &nbsp; Version <strong>V88</strong></div></main></body></html>`;}
 function errorPage(e){return shell(`<div class="box"><h2>Erreur Administration</h2><p class="bad">${esc(e?.message||String(e))}</p><p><a href="/admin.html">← Retour à l'accès administration</a></p></div>`);}
 function page(docs,drivers,msg='',statuses={},extDates={},archives=[],alerts={}){
   const groupLabels={camions:'Camions',pelles:'Matériel rail-route',vehicules:'Véhicules'};
@@ -325,6 +327,96 @@ export default async req=>{
       let removed=0;
       for(const d of drivers){if(!target.has(normPersonName(d.name))){await deleteDriverCompletely(d.id);removed++;}}
       return new Response(JSON.stringify({ok:true,removedDrivers:removed}),{status:200,headers:{'Content-Type':'application/json; charset=utf-8'}});
+    }
+
+    // Import de gros fichiers par fragments. Netlify limite les requêtes de Functions à 6 Mo
+    // et les uploads binaires à environ 4,5 Mo utiles à cause de l'encodage Base64.
+    if(action==='bulk-large-start') {
+      const okByPassword=String(fd.get('password')||'')===secret();
+      if(!isAdmin(req)&&!okByPassword) return new Response('Mot de passe incorrect',{status:401});
+      let meta={}; try{meta=JSON.parse(String(fd.get('meta')||'{}'));}catch{}
+      const target=String(meta.target||'');
+      if(!['machine','driver'].includes(target)) return new Response('Cible d’import invalide',{status:400});
+      if(target==='machine' && !allowed(String(meta.id||'').toUpperCase(),String(meta.type||''))) return new Response('Matériel/type invalide',{status:400});
+      if(target==='driver' && (!String(meta.driverName||'').trim() || !DRIVER_CATEGORIES[String(meta.cat||'')])) return new Response('Salarié/catégorie invalide',{status:400});
+      if(!String(meta.fileName||'').trim()) return new Response('Nom de fichier manquant',{status:400});
+      const uploadId=crypto.randomUUID();
+      await importTmpStore().set(`upload/${uploadId}/manifest.json`,JSON.stringify({createdAt:Date.now(),...meta}),{metadata:{type:'bulk-import-manifest',target}});
+      return new Response(JSON.stringify({ok:true,uploadId}),{status:200,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
+    }
+    if(action==='bulk-large-chunk') {
+      const okByPassword=String(fd.get('password')||'')===secret();
+      if(!isAdmin(req)&&!okByPassword) return new Response('Mot de passe incorrect',{status:401});
+      const uploadId=String(fd.get('uploadId')||'').trim();
+      const index=Number(fd.get('index'));
+      const file=fd.get('file');
+      if(!/^[-_a-zA-Z0-9]{20,64}$/.test(uploadId)||!Number.isInteger(index)||index<0||!(file instanceof File)) return new Response('Fragment invalide',{status:400});
+      if(file.size>3.5*1024*1024) return new Response('Fragment trop volumineux',{status:413});
+      const manifest=await importTmpStore().get(`upload/${uploadId}/manifest.json`,{type:'json'}).catch(()=>null);
+      if(!manifest) return new Response('Import temporaire introuvable',{status:404});
+      await importTmpStore().set(`upload/${uploadId}/chunk-${String(index).padStart(6,'0')}`,await file.arrayBuffer(),{metadata:{index:String(index),uploadedAt:new Date().toISOString()}});
+      return new Response(JSON.stringify({ok:true,index,size:file.size}),{status:200,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
+    }
+    if(action==='bulk-large-abort') {
+      const okByPassword=String(fd.get('password')||'')===secret();
+      if(!isAdmin(req)&&!okByPassword) return new Response('Mot de passe incorrect',{status:401});
+      const uploadId=String(fd.get('uploadId')||'').trim();
+      if(!/^[-_a-zA-Z0-9]{20,64}$/.test(uploadId)) return new Response('Import temporaire invalide',{status:400});
+      const {blobs}=await importTmpStore().list({prefix:`upload/${uploadId}/`});
+      await Promise.all(blobs.map(b=>importTmpStore().delete(b.key)));
+      return new Response(JSON.stringify({ok:true}),{status:200,headers:{'Content-Type':'application/json; charset=utf-8'}});
+    }
+    if(action==='bulk-large-finish') {
+      const okByPassword=String(fd.get('password')||'')===secret();
+      if(!isAdmin(req)&&!okByPassword) return new Response('Mot de passe incorrect',{status:401});
+      const uploadId=String(fd.get('uploadId')||'').trim();
+      const totalChunks=Number(fd.get('totalChunks'));
+      const expectedSize=Number(fd.get('totalBytes'));
+      if(!/^[-_a-zA-Z0-9]{20,64}$/.test(uploadId)||!Number.isInteger(totalChunks)||totalChunks<1||!Number.isFinite(expectedSize)||expectedSize<0) return new Response('Paramètres de finalisation invalides',{status:400});
+      const tmp=importTmpStore();
+      const manifest=await tmp.get(`upload/${uploadId}/manifest.json`,{type:'json'}).catch(()=>null);
+      if(!manifest) return new Response('Import temporaire introuvable',{status:404});
+      const parts=[]; let total=0;
+      for(let i=0;i<totalChunks;i++){
+        const key=`upload/${uploadId}/chunk-${String(i).padStart(6,'0')}`;
+        const buf=await tmp.get(key,{type:'arrayBuffer'}); if(!buf) return new Response(`Fragment ${i+1} manquant ou illisible`,{status:409});
+        parts.push(new Uint8Array(buf)); total+=buf.byteLength;
+      }
+      if(total!==expectedSize) return new Response(`Taille reconstruite incorrecte : ${total} octets au lieu de ${expectedSize}`,{status:409});
+      const bytes=new Uint8Array(total); let offset=0; for(const part of parts){bytes.set(part,offset); offset+=part.byteLength;}
+      try{
+        if(manifest.target==='machine'){
+          const id=String(manifest.id||'').toUpperCase(); const type=String(manifest.type||'');
+          if(!allowed(id,type)) return new Response('Matériel/type invalide',{status:400});
+          const expiry=String(manifest.expiry||'')||expiryFor(type,manifest.fileName);
+          const clean=String(manifest.fileName).replace(/[\\/]/g,'_');
+          await replaceExistingExpiryDocs(id,type);
+          const newKey=`${id}/${type}/${clean}`;
+          await store().set(newKey,bytes,{metadata:{type,label:String(manifest.fileName),expiry,uploadedAt:new Date().toISOString()}});
+          await replaceExistingExpiryDocs(id,type,newKey);
+        } else {
+          const name=String(manifest.driverName||'').trim(); const cat=String(manifest.cat||'divers').trim();
+          const detail=String(manifest.detail||'').trim(); const expiry=String(manifest.expiry||'').trim(); const kind=String(manifest.kind||'doc');
+          if(!name||!DRIVER_CATEGORIES[cat]) return new Response('Données salarié invalides',{status:400});
+          if(expiry && !/^\d{4}-\d{2}-\d{2}$/.test(expiry)) return new Response('Date d’expiration invalide',{status:400});
+          let d=await findDriverByName(name); let createdCode='';
+          if(!d){const code=randomDriverCode(); createdCode=code; const id=crypto.randomUUID(); d={id,name,codeHash:hashSecret(code),enabled:true,photoVersion:''}; await driverStore().set(`driver/${id}.json`,JSON.stringify(d),{metadata:{type:'driver'}});}
+          if(kind==='photo'){
+            if(!/^image\/(jpeg|png|webp)$/.test(String(manifest.mime||'')) || bytes.byteLength>5*1024*1024) return new Response('Photo invalide',{status:400});
+            await driverStore().set(`photo/${d.id}`,bytes,{metadata:{contentType:String(manifest.mime||''),label:`Photo de ${d.name}`,uploadedAt:new Date().toISOString()}});
+            d.photoVersion=Date.now(); await driverStore().set(`driver/${d.id}.json`,JSON.stringify(d),{metadata:{type:'driver'}});
+          } else {
+            const clean=String(manifest.fileName).replace(/[\\/]/g,'_');
+            await driverStore().set(`docs/${d.id}/${cat}/${clean}`,bytes,{metadata:{label:detail||DRIVER_CATEGORIES[cat].label,detail:detail||DRIVER_CATEGORIES[cat].label,expiry,contentType:String(manifest.mime||''),uploadedAt:new Date().toISOString()}});
+          }
+          return new Response(JSON.stringify({ok:true,target:'driver',driver:d.name,id:d.id,createdCode,kind,cat,size:bytes.byteLength}),{status:200,headers:{'Content-Type':'application/json; charset=utf-8'}});
+        }
+        return new Response(JSON.stringify({ok:true,target:manifest.target,size:bytes.byteLength}),{status:200,headers:{'Content-Type':'application/json; charset=utf-8'}});
+      } finally {
+        const deletes=[tmp.delete(`upload/${uploadId}/manifest.json`)];
+        for(let i=0;i<totalChunks;i++) deletes.push(tmp.delete(`upload/${uploadId}/chunk-${String(i).padStart(6,'0')}`));
+        await Promise.allSettled(deletes);
+      }
     }
 
     // Import en masse : l'ancien bulk-import.js envoie le mot de passe à chaque fichier.
