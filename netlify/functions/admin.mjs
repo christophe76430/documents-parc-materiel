@@ -46,7 +46,16 @@ const statusStore = () => getStore({name:STATUS_STORE,region:REGION,consistency:
 const extinguisherStore = () => getStore({name:EXTINGUISHER_STORE,region:REGION,consistency:'strong'});
 const archiveStore = () => getStore({name:ARCHIVE_STORE,region:REGION,consistency:'strong'});
 const hasExtinguisher = id => { const m=MACHINES[id]; if(!m) return false; if(/^(REM|RRA|RRAT|ANSEMS)/i.test(id) || /\bremorque\b/i.test(m.name)) return false; return m.group==='pelles' || /^T\d+$/.test(id); };
-async function getExtinguisherDates(){const out={};for(const id of Object.keys(MACHINES)){if(!hasExtinguisher(id))continue;try{const r=await extinguisherStore().get(`machine/${id}.json`,{type:'json',consistency:'strong'});if(r?.expiry)out[id]=String(r.expiry);}catch{}}return out;}
+async function getExtinguisherDates(){
+  const ids=Object.keys(MACHINES).filter(hasExtinguisher);
+  const pairs=await Promise.all(ids.map(async id=>{
+    try{
+      const r=await extinguisherStore().get(`machine/${id}.json`,{type:'json',consistency:'strong'});
+      return r?.expiry?[id,String(r.expiry)]:null;
+    }catch{return null;}
+  }));
+  return Object.fromEntries(pairs.filter(Boolean));
+}
 const secret = () => process.env.PARC_PASSWORD || '';
 
 function esc(s){return String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
@@ -93,13 +102,13 @@ async function replaceExistingExpiryDocs(id,type,keepKey=''){
 
 async function docsList(){
   const {blobs}=await store().list({prefix:''});
-  const raw=[];
-  for(const b of blobs){
+  const rows=await Promise.all(blobs.map(async b=>{
     const p=b.key.split('/');
-    if(!MACHINES[p[0]])continue;
+    if(!MACHINES[p[0]])return null;
     const meta=(await store().getMetadata(b.key,{consistency:'strong'}).catch(()=>null))?.metadata||{};
-    raw.push({key:b.key,id:p[0],type:meta.type||p[1]||'',label:meta.label||p.slice(2).join('/'),uploadedAt:meta.uploadedAt||''});
-  }
+    return {key:b.key,id:p[0],type:meta.type||p[1]||'',label:meta.label||p.slice(2).join('/'),uploadedAt:meta.uploadedAt||'',expiry:meta.expiry||''};
+  }));
+  const raw=rows.filter(Boolean);
   const byExpiry=new Map();
   const out=[];
   for(const d of raw){
@@ -124,21 +133,21 @@ async function archiveList(){
 }
 async function machineStatuses(){
   const {blobs}=await statusStore().list({prefix:'machine/'});
-  const out={};
-  for(const id of Object.keys(MACHINES)) out[id]=true;
-  for(const b of blobs){
+  const out=Object.fromEntries(Object.keys(MACHINES).map(id=>[id,true]));
+  const rows=await Promise.all(blobs.map(async b=>{
     const id=b.key.slice('machine/'.length).replace(/\.json$/,'').toUpperCase();
-    if(!MACHINES[id])continue;
-    try{const v=await statusStore().get(b.key,{type:'json',consistency:'strong'});out[id]=v?.enabled!==false;}catch{}
-  }
+    if(!MACHINES[id])return null;
+    try{const v=await statusStore().get(b.key,{type:'json',consistency:'strong'});return [id,v?.enabled!==false];}
+    catch{return null;}
+  }));
+  for(const row of rows)if(row)out[row[0]]=row[1];
   return out;
 }
 async function adminAlerts(docs,extDates){
   const now=Date.now();
-  const metas=await Promise.all(docs.map(async d=>(await store().getMetadata(d.key,{consistency:'strong'}).catch(()=>null))?.metadata||{}));
   let overdue=0,within30=0;
-  for(let i=0;i<docs.length;i++){
-    const d=docs[i], expiry=metas[i]?.expiry||'';
+  for(const d of docs){
+    const expiry=d.expiry||'';
     if(!expiry||['carte','barreRouge','divers','doc','devis'].includes(d.type))continue;
     const date=new Date(`${expiry}T23:59:59`); if(Number.isNaN(date.getTime()))continue;
     const days=Math.ceil((date.getTime()-now)/86400000);
@@ -180,7 +189,7 @@ async function deleteDriverCompletely(id){
   try{await driverStore().delete(`photo/${id}`);}catch{}
   try{await driverStore().delete(`driver/${id}.json`);}catch{}
 }
-function shell(body){return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration THN</title><link rel="stylesheet" href="/style.css"><style>.driver-admin-row{padding:10px 0;border-bottom:1px solid #e5edf5}.driver-admin-row:last-child{border-bottom:0}.medical-date-form{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.medical-date-form label{margin:0}.medical-date-form input{min-width:170px}.medical-visit-admin{display:flex;justify-content:space-between;gap:16px;align-items:end;padding:14px 16px;margin:10px 0 16px;border:1px solid #d8e6f4;border-radius:12px;background:#f7fbff}.medical-visit-admin h4{margin:0 0 4px}.medical-visit-admin .medical-date-form{margin:0}.doc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.replace-form{margin:0}.replace{background:#1976d2;color:#fff}.doc-card form{margin:0}.doc-card button{margin:0}.employee-admin-box{overflow:hidden}.employee-admin-head,.employee-list-head,.driver-admin-main{display:flex;justify-content:space-between;gap:16px;align-items:center}.employee-count{background:#eef6ff;color:#1264b0;border-radius:999px;padding:7px 12px;font-weight:700}.employee-add-card{margin:18px 0;padding:18px;border:1px solid #d8e6f4;border-radius:14px;background:linear-gradient(180deg,#f8fbff,#fff)}.employee-add-form{display:grid;grid-template-columns:1.3fr 1fr auto;gap:12px;align-items:end;margin-top:14px}.code-field{display:flex;gap:8px}.code-field input{flex:1}.secondary{background:#eef6ff;color:#1264b0}.primary{background:#1769d1;color:#fff}.employee-list-head{margin-top:22px}.employee-list-head input{max-width:280px}.driver-admin-row{padding:14px 0;border-bottom:1px solid #e5edf5}.driver-admin-row:last-child{border-bottom:0}.driver-name{margin:0 0 3px}.small{font-size:.86rem}.medical-date-form{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.medical-date-form label{margin:0}.medical-date-form input{min-width:170px}.driver-photo-admin{display:flex;align-items:center;gap:14px;min-width:260px}.driver-photo-thumb{width:58px;height:58px;border-radius:50%;object-fit:cover;border:2px solid #d7e5f2;background:#eef6ff}.driver-photo-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.driver-photo-form input[type=file]{max-width:220px}.photo-hint{font-size:.8rem;color:#6b8299}.employee-add-form{grid-template-columns:1.2fr 1fr 1.1fr auto}.employee-add-form input[type=file]{max-width:240px}.driver-doc-form{display:grid;grid-template-columns:1fr 1.2fr 1fr auto;gap:10px;align-items:end}.driver-doc-form label{margin:0}.driver-doc-form input,.driver-doc-form select{min-width:0}@media(max-width:850px){.driver-doc-form{grid-template-columns:1fr 1fr}.driver-doc-form button{grid-column:1/-1}}</style></head><body><main>${body}<div class="site-footer-copy" style="text-align:center;padding:18px;color:#6b7f95">THN — Administration &nbsp; | &nbsp; Version <strong>V86</strong></div></main></body></html>`;}
+function shell(body){return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration THN</title><link rel="stylesheet" href="/style.css"><style>.driver-admin-row{padding:10px 0;border-bottom:1px solid #e5edf5}.driver-admin-row:last-child{border-bottom:0}.medical-date-form{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.medical-date-form label{margin:0}.medical-date-form input{min-width:170px}.medical-visit-admin{display:flex;justify-content:space-between;gap:16px;align-items:end;padding:14px 16px;margin:10px 0 16px;border:1px solid #d8e6f4;border-radius:12px;background:#f7fbff}.medical-visit-admin h4{margin:0 0 4px}.medical-visit-admin .medical-date-form{margin:0}.doc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.replace-form{margin:0}.replace{background:#1976d2;color:#fff}.doc-card form{margin:0}.doc-card button{margin:0}.employee-admin-box{overflow:hidden}.employee-admin-head,.employee-list-head,.driver-admin-main{display:flex;justify-content:space-between;gap:16px;align-items:center}.employee-count{background:#eef6ff;color:#1264b0;border-radius:999px;padding:7px 12px;font-weight:700}.employee-add-card{margin:18px 0;padding:18px;border:1px solid #d8e6f4;border-radius:14px;background:linear-gradient(180deg,#f8fbff,#fff)}.employee-add-form{display:grid;grid-template-columns:1.3fr 1fr auto;gap:12px;align-items:end;margin-top:14px}.code-field{display:flex;gap:8px}.code-field input{flex:1}.secondary{background:#eef6ff;color:#1264b0}.primary{background:#1769d1;color:#fff}.employee-list-head{margin-top:22px}.employee-list-head input{max-width:280px}.driver-admin-row{padding:14px 0;border-bottom:1px solid #e5edf5}.driver-admin-row:last-child{border-bottom:0}.driver-name{margin:0 0 3px}.small{font-size:.86rem}.medical-date-form{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.medical-date-form label{margin:0}.medical-date-form input{min-width:170px}.driver-photo-admin{display:flex;align-items:center;gap:14px;min-width:260px}.driver-photo-thumb{width:58px;height:58px;border-radius:50%;object-fit:cover;border:2px solid #d7e5f2;background:#eef6ff}.driver-photo-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.driver-photo-form input[type=file]{max-width:220px}.photo-hint{font-size:.8rem;color:#6b8299}.employee-add-form{grid-template-columns:1.2fr 1fr 1.1fr auto}.employee-add-form input[type=file]{max-width:240px}.driver-doc-form{display:grid;grid-template-columns:1fr 1.2fr 1fr auto;gap:10px;align-items:end}.driver-doc-form label{margin:0}.driver-doc-form input,.driver-doc-form select{min-width:0}@media(max-width:850px){.driver-doc-form{grid-template-columns:1fr 1fr}.driver-doc-form button{grid-column:1/-1}}</style></head><body><main>${body}<div class="site-footer-copy" style="text-align:center;padding:18px;color:#6b7f95">THN — Administration &nbsp; | &nbsp; Version <strong>V87</strong></div></main></body></html>`;}
 function errorPage(e){return shell(`<div class="box"><h2>Erreur Administration</h2><p class="bad">${esc(e?.message||String(e))}</p><p><a href="/admin.html">← Retour à l'accès administration</a></p></div>`);}
 function page(docs,drivers,msg='',statuses={},extDates={},archives=[],alerts={}){
   const groupLabels={camions:'Camions',pelles:'Matériel rail-route',vehicules:'Véhicules'};
