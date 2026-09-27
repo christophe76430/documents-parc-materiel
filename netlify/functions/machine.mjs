@@ -95,7 +95,7 @@ function docs(m,items,extDates={}){
     if(!list.length){
       const hasExpiryType=!NO_EXPIRY.has(t);
       const missingText=hasExpiryType?'Pas de document':'Document non chargé';
-      out+=`<div class="doc-row doc-row-missing">${docIcon(t)}<div class="doc-main">${dot('none')}<span class="${hasExpiryType?'doc-missing-expiry':''}">${esc(missingText)}</span></div></div>`;
+      out+=`<div class="doc-row doc-row-missing">${docIcon(t)}<div class="doc-main">${hasExpiryType?dot('none'):''}<span class="${hasExpiryType?'doc-missing-expiry':''}">${esc(missingText)}</span></div></div>`;
       continue;
     }
 
@@ -116,7 +116,7 @@ function docs(m,items,extDates={}){
           : `<span class="doc-file">${esc(filename)}</span>`;
       out+=`<div class="doc-row">
         ${docIcon(t)}
-        <div class="doc-main">${dot(state)}<div><span class="doc-title">${esc(meta.label)}</span>${detail}</div></div>
+        <div class="doc-main">${hasExpiryType?dot(state):''}<div><span class="doc-title">${esc(meta.label)}</span>${detail}</div></div>
         <a class="doc-consult" href="/document/${encodeURIComponent(m.id)}/${encodeURIComponent(legacy)}/${name}" target="_blank" rel="noopener">👁️ Consulter</a>
       </div>`;
     }
