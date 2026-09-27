@@ -1,0 +1,4 @@
+Source reçue : parcmat (2).zip
+Sections : 01 - CAMIONS / 02 - PELLES / 03 - VL / 04 - SALARIES
+Salariés détectés dans les dossiers : 12
+Le dossier de préparation fourni séparément par THN est parcmat_THN_V86_ready.zip.

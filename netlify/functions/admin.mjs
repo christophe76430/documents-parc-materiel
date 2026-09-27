@@ -29,8 +29,12 @@ const TYPES = {
   devis:{label:'Devis'}
 };
 const DRIVER_CATEGORIES = {
-  identite:{label:'Identité',icon:'👤'},
-  formation:{label:'Formation',icon:'🎓'},
+  identite:{label:'Identité & administratif',icon:'👤'},
+  permis:{label:'Permis & autorisations',icon:'🚗'},
+  formation:{label:'Formations & habilitations',icon:'🎓'},
+  acces:{label:'Accès & badges',icon:'🪪'},
+  diplomes:{label:'Diplômes & qualifications',icon:'📜'},
+  sante:{label:'Santé & aptitude',icon:'🩺'},
   divers:{label:'Divers',icon:'📂'}
 };
 const NO_EXPIRY = new Set(['carte','barreRouge','divers','doc','devis']);
@@ -149,7 +153,34 @@ async function adminAlerts(docs,extDates){
   return {overdue,within30,ext30};
 }
 async function driverList(){const {blobs}=await driverStore().list({prefix:'driver/'});const values=await Promise.all(blobs.map(b=>driverStore().get(b.key,{type:'json'}).catch(()=>null)));return values.filter(Boolean);}
-function shell(body){return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration THN</title><link rel="stylesheet" href="/style.css"><style>.driver-admin-row{padding:10px 0;border-bottom:1px solid #e5edf5}.driver-admin-row:last-child{border-bottom:0}.medical-date-form{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.medical-date-form label{margin:0}.medical-date-form input{min-width:170px}.medical-visit-admin{display:flex;justify-content:space-between;gap:16px;align-items:end;padding:14px 16px;margin:10px 0 16px;border:1px solid #d8e6f4;border-radius:12px;background:#f7fbff}.medical-visit-admin h4{margin:0 0 4px}.medical-visit-admin .medical-date-form{margin:0}.doc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.replace-form{margin:0}.replace{background:#1976d2;color:#fff}.doc-card form{margin:0}.doc-card button{margin:0}.employee-admin-box{overflow:hidden}.employee-admin-head,.employee-list-head,.driver-admin-main{display:flex;justify-content:space-between;gap:16px;align-items:center}.employee-count{background:#eef6ff;color:#1264b0;border-radius:999px;padding:7px 12px;font-weight:700}.employee-add-card{margin:18px 0;padding:18px;border:1px solid #d8e6f4;border-radius:14px;background:linear-gradient(180deg,#f8fbff,#fff)}.employee-add-form{display:grid;grid-template-columns:1.3fr 1fr auto;gap:12px;align-items:end;margin-top:14px}.code-field{display:flex;gap:8px}.code-field input{flex:1}.secondary{background:#eef6ff;color:#1264b0}.primary{background:#1769d1;color:#fff}.employee-list-head{margin-top:22px}.employee-list-head input{max-width:280px}.driver-admin-row{padding:14px 0;border-bottom:1px solid #e5edf5}.driver-admin-row:last-child{border-bottom:0}.driver-name{margin:0 0 3px}.small{font-size:.86rem}.medical-date-form{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.medical-date-form label{margin:0}.medical-date-form input{min-width:170px}.driver-photo-admin{display:flex;align-items:center;gap:14px;min-width:260px}.driver-photo-thumb{width:58px;height:58px;border-radius:50%;object-fit:cover;border:2px solid #d7e5f2;background:#eef6ff}.driver-photo-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.driver-photo-form input[type=file]{max-width:220px}.photo-hint{font-size:.8rem;color:#6b8299}.employee-add-form{grid-template-columns:1.2fr 1fr 1.1fr auto}.employee-add-form input[type=file]{max-width:240px}.driver-doc-form{display:grid;grid-template-columns:1fr 1.2fr 1fr auto;gap:10px;align-items:end}.driver-doc-form label{margin:0}.driver-doc-form input,.driver-doc-form select{min-width:0}@media(max-width:850px){.driver-doc-form{grid-template-columns:1fr 1fr}.driver-doc-form button{grid-column:1/-1}}</style></head><body><main>${body}<div class="site-footer-copy" style="text-align:center;padding:18px;color:#6b7f95">THN — Administration &nbsp; | &nbsp; Version <strong>V85</strong></div></main></body></html>`;}
+
+function normPersonName(v){
+  return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+}
+async function findDriverByName(name){
+  const target=normPersonName(name); if(!target)return null;
+  const drivers=await driverList();
+  return drivers.find(d=>normPersonName(d.name)===target)||null;
+}
+function randomDriverCode(){return String(Math.floor(100000+Math.random()*900000));}
+async function listDriverFiles(id){
+  const {blobs}=await driverStore().list({prefix:`docs/${id}/`});
+  return blobs;
+}
+async function clearDriverDocuments(id){
+  const blobs=await listDriverFiles(id);
+  await Promise.all(blobs.map(b=>driverStore().delete(b.key)));
+}
+async function clearMachineDocuments(id){
+  const {blobs}=await store().list({prefix:`${id}/`});
+  await Promise.all(blobs.map(b=>store().delete(b.key)));
+}
+async function deleteDriverCompletely(id){
+  await clearDriverDocuments(id);
+  try{await driverStore().delete(`photo/${id}`);}catch{}
+  try{await driverStore().delete(`driver/${id}.json`);}catch{}
+}
+function shell(body){return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration THN</title><link rel="stylesheet" href="/style.css"><style>.driver-admin-row{padding:10px 0;border-bottom:1px solid #e5edf5}.driver-admin-row:last-child{border-bottom:0}.medical-date-form{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.medical-date-form label{margin:0}.medical-date-form input{min-width:170px}.medical-visit-admin{display:flex;justify-content:space-between;gap:16px;align-items:end;padding:14px 16px;margin:10px 0 16px;border:1px solid #d8e6f4;border-radius:12px;background:#f7fbff}.medical-visit-admin h4{margin:0 0 4px}.medical-visit-admin .medical-date-form{margin:0}.doc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.replace-form{margin:0}.replace{background:#1976d2;color:#fff}.doc-card form{margin:0}.doc-card button{margin:0}.employee-admin-box{overflow:hidden}.employee-admin-head,.employee-list-head,.driver-admin-main{display:flex;justify-content:space-between;gap:16px;align-items:center}.employee-count{background:#eef6ff;color:#1264b0;border-radius:999px;padding:7px 12px;font-weight:700}.employee-add-card{margin:18px 0;padding:18px;border:1px solid #d8e6f4;border-radius:14px;background:linear-gradient(180deg,#f8fbff,#fff)}.employee-add-form{display:grid;grid-template-columns:1.3fr 1fr auto;gap:12px;align-items:end;margin-top:14px}.code-field{display:flex;gap:8px}.code-field input{flex:1}.secondary{background:#eef6ff;color:#1264b0}.primary{background:#1769d1;color:#fff}.employee-list-head{margin-top:22px}.employee-list-head input{max-width:280px}.driver-admin-row{padding:14px 0;border-bottom:1px solid #e5edf5}.driver-admin-row:last-child{border-bottom:0}.driver-name{margin:0 0 3px}.small{font-size:.86rem}.medical-date-form{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.medical-date-form label{margin:0}.medical-date-form input{min-width:170px}.driver-photo-admin{display:flex;align-items:center;gap:14px;min-width:260px}.driver-photo-thumb{width:58px;height:58px;border-radius:50%;object-fit:cover;border:2px solid #d7e5f2;background:#eef6ff}.driver-photo-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.driver-photo-form input[type=file]{max-width:220px}.photo-hint{font-size:.8rem;color:#6b8299}.employee-add-form{grid-template-columns:1.2fr 1fr 1.1fr auto}.employee-add-form input[type=file]{max-width:240px}.driver-doc-form{display:grid;grid-template-columns:1fr 1.2fr 1fr auto;gap:10px;align-items:end}.driver-doc-form label{margin:0}.driver-doc-form input,.driver-doc-form select{min-width:0}@media(max-width:850px){.driver-doc-form{grid-template-columns:1fr 1fr}.driver-doc-form button{grid-column:1/-1}}</style></head><body><main>${body}<div class="site-footer-copy" style="text-align:center;padding:18px;color:#6b7f95">THN — Administration &nbsp; | &nbsp; Version <strong>V86</strong></div></main></body></html>`;}
 function errorPage(e){return shell(`<div class="box"><h2>Erreur Administration</h2><p class="bad">${esc(e?.message||String(e))}</p><p><a href="/admin.html">← Retour à l'accès administration</a></p></div>`);}
 function page(docs,drivers,msg='',statuses={},extDates={},archives=[],alerts={}){
   const groupLabels={camions:'Camions',pelles:'Matériel rail-route',vehicules:'Véhicules'};
@@ -181,7 +212,7 @@ function page(docs,drivers,msg='',statuses={},extDates={},archives=[],alerts={})
   <div class="box admin-alerts"><h2>📊 Vue rapide</h2><div class="admin-alert-grid"><div><strong>${alerts.overdue||0}</strong><span>Échéances dépassées</span></div><div><strong>${alerts.within30||0}</strong><span>Échéances ≤ 30 jours</span></div><div><strong>${alerts.ext30||0}</strong><span>Extincteurs ≤ 30 jours</span></div><a class="admin-export" href="/export">📊 Export Excel</a><a class="admin-export" href="/.netlify/functions/admin-qr" target="_blank" rel="noopener">📱 Liste des QR codes</a></div></div>
   <div class="box fleet-status-box"><div class="fleet-status-head"><div><h2>⚙️ État du parc</h2><p class="muted">Passez un matériel sur <strong>OFF</strong> lorsqu'il est au garage ou inutilisé. Ses échéances disparaissent de l'accueil et des listes d'échéances.</p></div></div>${fleetHtml}</div>
   <div class="box"><h2>📄 Import d'un document</h2><p class="muted">Pour les rubriques avec échéance, un seul document actif est autorisé. Un nouveau chargement remplace l’ancien et le conserve dans l’archive.</p><form method="post" action="/.netlify/functions/admin" enctype="multipart/form-data"><label>Matériel</label><select name="id">${Object.values(MACHINES).map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select><label>Type</label><select name="type" id="doc-type">${Object.entries(TYPES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('')}</select><label id="expiry-label">Date d'expiration</label><input id="expiry" type="date" name="expiry"><label>Fichier</label><input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" required><button>Charger le document</button></form></div>
-  <div class="box"><h2>📦 Import de tout le parc</h2><p class="muted">Sélectionne le dossier <strong>PARCMAT</strong>. Les sous-dossiers sont reconnus automatiquement.</p><label>Mot de passe administrateur</label><input id="bulk-password" type="password"><label>Dossier PARCMAT</label><input id="bulk-files" type="file" webkitdirectory directory multiple accept=".pdf,.jpg,.jpeg,.png"><button type="button" id="bulk-start">Importer tout le parc</button><div id="bulk-status" class="muted"></div><pre id="bulk-log"></pre></div>
+  <div class="box"><h2>📦 Import complet du parc et des salariés</h2><p class="muted">Sélectionne le dossier <strong>PARCMAT</strong> décompressé. Les sous-dossiers <strong>CAMIONS</strong>, <strong>PELLES</strong>, <strong>VL</strong> et <strong>SALARIES</strong> sont reconnus automatiquement.</p><label>Mot de passe administrateur</label><input id="bulk-password" type="password"><label>Dossier PARCMAT</label><input id="bulk-files" type="file" webkitdirectory directory multiple accept=".pdf,.jpg,.jpeg,.png,.json"><label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input id="bulk-replace" type="checkbox" style="width:auto"> <strong>Remplacer les données actuelles du dossier importé</strong></label><p class="muted small">En remplacement, les documents actuels des matériels présents dans le dossier sont retirés avant import. Les salariés portant le même nom conservent leur code personnel et leur date de visite médicale. Les nouveaux salariés reçoivent automatiquement un code à 6 chiffres affiché dans le journal.</p><button type="button" id="bulk-start">Importer tout le parc et les salariés</button><div id="bulk-status" class="muted"></div><pre id="bulk-log"></pre></div>
   <div class="box"><h2>📄 Documents du parc</h2><input id="doc-search" type="search" placeholder="Rechercher un matériel ou document...">${docs.map(d=>`<div class="doc-card searchable" data-search="${esc((MACHINES[d.id].name+' '+d.label).toLowerCase())}"><span><b>${esc(MACHINES[d.id].name)}</b><br><span class="muted">${esc(TYPES[d.type]?.label||d.type)}</span><br>${esc(d.label)}</span><span class="doc-actions"><form method="post" action="/.netlify/functions/admin" enctype="multipart/form-data" class="replace-form"><input type="hidden" name="action" value="replace-doc"><input type="hidden" name="key" value="${esc(d.key)}"><input type="hidden" name="id" value="${esc(d.id)}"><input type="hidden" name="type" value="${esc(d.type)}"><input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" required hidden onchange="this.form.submit()"><button type="button" class="replace" onclick="this.previousElementSibling.click()">Remplacer</button></form><form method="post" action="/.netlify/functions/admin" onsubmit="return confirm('Supprimer définitivement ce document ?')"><input type="hidden" name="action" value="delete-doc"><input type="hidden" name="key" value="${esc(d.key)}"><button class="danger">Supprimer</button></form></span></div>`).join('')||'<p>Aucun document.</p>'}</div>\n  <div class="box archive-box"><div class="archive-head"><div><h2>🗄️ Archive</h2><p class="muted">Les anciens fichiers sont conservés automatiquement lors d’un remplacement.</p></div><span class="archive-count">${archives.length} fichier(s)</span></div>${archives.length?archives.map(a=>`<div class="doc-card archive-card"><span><b>${esc(MACHINES[a.id]?.name||a.id)}</b><br><span class="muted">${esc(TYPES[a.type]?.label||a.type)}</span><br>${esc(a.label)}${a.archivedAt?`<br><small class="muted">Archivé le ${esc(new Date(a.archivedAt).toLocaleString('fr-FR'))}</small>`:''}</span><span class="doc-actions"><a class="replace" href="/.netlify/functions/archive?key=${encodeURIComponent(a.key)}" target="_blank" rel="noopener">👁️ Consulter</a></span></div>`).join(''):'<p class="muted">Aucun document archivé.</p>'}</div>
   <div class="box employee-admin-box"><div class="employee-admin-head"><div><h2>👷 Gestion des salariés</h2><p class="muted">Ajoutez facilement un salarié, définissez son code personnel et sa prochaine visite médicale.</p></div><span class="employee-count">${drivers.length} salarié(s)</span></div>
     <div class="employee-add-card"><div><h3>➕ Ajouter un salarié</h3><p class="muted">Le code personnel permet au salarié d'accéder à son espace.</p></div><form method="post" action="/.netlify/functions/admin" enctype="multipart/form-data" class="employee-add-form"><input type="hidden" name="action" value="add-driver"><div><label>Nom et prénom</label><input name="name" placeholder="Ex. Jean Dupont" required></div><div><label>Code personnel</label><div class="code-field"><input id="new-driver-code" name="code" placeholder="6 chiffres" inputmode="numeric" minlength="4" required><button type="button" class="secondary" onclick="generateDriverCode()">Générer</button></div></div><div><label>Photo du salarié <span class="photo-hint">(facultatif)</span></label><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"></div><button class="primary" type="submit">Ajouter le salarié</button></form></div>
@@ -212,6 +243,79 @@ export default async req=>{
       if(!secret()) return html(shell('<div class="box"><p class="bad">La variable PARC_PASSWORD n\'est pas configurée dans Netlify.</p></div>'),500);
       if(String(fd.get('password')||'')!==secret()) return html(shell('<div class="box"><p class="bad">Mot de passe incorrect.</p><p><a href="/admin.html">Retour</a></p></div>'),401);
       const d=await loadAdminData(); return html(await page(d.docs,d.drivers,'Connexion administrateur réussie.',d.statuses,d.extDates,d.archives,d.alerts),200,{'Set-Cookie':cookie('PARC_ADMIN',makeToken('ADMIN'))});
+    }
+
+
+    if(action==='bulk-replace-prepare'){
+      const okByPassword=String(fd.get('password')||'')===secret();
+      if(!isAdmin(req)&&!okByPassword) return new Response('Mot de passe incorrect',{status:401});
+      let machineIds=[]; let driverNames=[];
+      try{machineIds=JSON.parse(String(fd.get('machineIds')||'[]'));}catch{}
+      try{driverNames=JSON.parse(String(fd.get('driverNames')||'[]'));}catch{}
+      machineIds=[...new Set(machineIds.map(x=>String(x||'').toUpperCase()).filter(x=>MACHINES[x]))];
+      driverNames=[...new Set(driverNames.map(x=>String(x||'').trim()).filter(Boolean))];
+      for(const id of machineIds) await clearMachineDocuments(id);
+      const target=new Set(driverNames.map(normPersonName));
+      const drivers=await driverList();
+      for(const d of drivers){if(target.has(normPersonName(d.name))) await clearDriverDocuments(d.id);}
+      return new Response(JSON.stringify({ok:true,machinesCleared:machineIds.length,driversPrepared:[...target]}),{status:200,headers:{'Content-Type':'application/json; charset=utf-8'}});
+    }
+    if(action==='bulk-driver-ensure-all'){
+      const okByPassword=String(fd.get('password')||'')===secret();
+      if(!isAdmin(req)&&!okByPassword) return new Response('Mot de passe incorrect',{status:401});
+      let names=[]; try{names=JSON.parse(String(fd.get('driverNames')||'[]'));}catch{}
+      names=[...new Set(names.map(x=>String(x||'').trim()).filter(Boolean))];
+      const out=[];
+      for(const name of names){
+        let d=await findDriverByName(name); let createdCode='';
+        if(!d){
+          const code=randomDriverCode(); createdCode=code;
+          const id=crypto.randomUUID();
+          d={id,name,codeHash:hashSecret(code),enabled:true,photoVersion:''};
+          await driverStore().set(`driver/${id}.json`,JSON.stringify(d),{metadata:{type:'driver'}});
+        }
+        out.push({name:d.name,id:d.id,createdCode});
+      }
+      return new Response(JSON.stringify({ok:true,drivers:out}),{status:200,headers:{'Content-Type':'application/json; charset=utf-8'}});
+    }
+    if(action==='bulk-driver'){
+      const okByPassword=String(fd.get('password')||'')===secret();
+      if(!isAdmin(req)&&!okByPassword) return new Response('Mot de passe incorrect',{status:401});
+      const name=String(fd.get('driverName')||'').trim();
+      const cat=String(fd.get('cat')||'divers').trim();
+      const detail=String(fd.get('detail')||'').trim();
+      const expiry=String(fd.get('expiry')||'').trim();
+      const kind=String(fd.get('kind')||'doc');
+      const file=fd.get('file');
+      if(!name||!DRIVER_CATEGORIES[cat]||!(file instanceof File))return new Response('Données salarié invalides',{status:400});
+      if(expiry && !/^\d{4}-\d{2}-\d{2}$/.test(expiry))return new Response('Date d\'expiration invalide',{status:400});
+      let d=await findDriverByName(name); let createdCode='';
+      if(!d){
+        const code=randomDriverCode(); createdCode=code;
+        const id=crypto.randomUUID();
+        d={id,name,codeHash:hashSecret(code),enabled:true,photoVersion:''};
+        await driverStore().set(`driver/${id}.json`,JSON.stringify(d),{metadata:{type:'driver'}});
+      }
+      if(kind==='photo'){
+        if(!/^image\/(jpeg|png|webp)$/.test(file.type||'') || file.size>5*1024*1024)return new Response('Photo invalide',{status:400});
+        await driverStore().set(`photo/${d.id}`,await file.arrayBuffer(),{metadata:{contentType:file.type,label:`Photo de ${d.name}`,uploadedAt:new Date().toISOString()}});
+        d.photoVersion=Date.now();
+        await driverStore().set(`driver/${d.id}.json`,JSON.stringify(d),{metadata:{type:'driver'}});
+      }else{
+        const clean=file.name.replace(/[\\/]/g,'_');
+        await driverStore().set(`docs/${d.id}/${cat}/${clean}`,await file.arrayBuffer(),{metadata:{label:detail||DRIVER_CATEGORIES[cat].label,detail:detail||DRIVER_CATEGORIES[cat].label,expiry,contentType:file.type,uploadedAt:new Date().toISOString()}});
+      }
+      return new Response(JSON.stringify({ok:true,driver:d.name,id:d.id,createdCode,kind,cat}),{status:200,headers:{'Content-Type':'application/json; charset=utf-8'}});
+    }
+    if(action==='bulk-replace-finalize'){
+      const okByPassword=String(fd.get('password')||'')===secret();
+      if(!isAdmin(req)&&!okByPassword) return new Response('Mot de passe incorrect',{status:401});
+      let driverNames=[]; try{driverNames=JSON.parse(String(fd.get('driverNames')||'[]'));}catch{}
+      const target=new Set(driverNames.map(normPersonName));
+      const drivers=await driverList();
+      let removed=0;
+      for(const d of drivers){if(!target.has(normPersonName(d.name))){await deleteDriverCompletely(d.id);removed++;}}
+      return new Response(JSON.stringify({ok:true,removedDrivers:removed}),{status:200,headers:{'Content-Type':'application/json; charset=utf-8'}});
     }
 
     // Import en masse : l'ancien bulk-import.js envoie le mot de passe à chaque fichier.
