@@ -87,7 +87,7 @@ function machineSummary(m,enabled,origin){
   const showQr=m.group==='pelles';
   const originHint='QR code de cette fiche';
   const qr=showQr?`<div class="machine-qr"><img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(`${origin}/machine/${encodeURIComponent(m.id)}`)}" alt="QR code pour ${esc(m.name)}"><div><strong>${originHint}</strong><p>Scannez ce QR code pour ouvrir directement la fiche de cet engin ou de cette remorque.</p></div></div>`:'';
-  return `${qr}<div class="box machine-summary"><div><span class="summary-label">Catégorie</span><strong>${esc(m.group==='pelles'?'Matériel rail-route':m.group==='vehicules'?'Véhicule':'Camion')}</strong></div></div>`;
+  const cat=m.group==='pelles'?'Matériel rail-route':m.group==='vehicules'?'Véhicule':'Camion'; return `<div class="machine-actions"><a class="back-button" href="/category/${encodeURIComponent(m.group)}">← Retour à la catégorie</a><button type="button" onclick="window.print()">🖨️ Imprimer la fiche</button></div>${qr}<div class="box machine-summary machine-360"><div><span class="summary-label">Catégorie</span><strong>${esc(cat)}</strong></div><div><span class="summary-label">Identifiant parc</span><strong>${esc(m.id)}</strong></div><div><span class="summary-label">Accès rapide</span><strong>QR code + documents</strong></div></div>`;
 }
 
 function docs(m,items,extDates={}){
