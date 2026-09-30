@@ -23,6 +23,13 @@
   status = 200
   force = true
 
+
+[[redirects]]
+  from = "/driver-files"
+  to = "/.netlify/functions/driver-files"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/gestionnaire-fichiers-salaries"
   to = "/.netlify/functions/driver-files"
