@@ -1,4 +1,4 @@
-THN V99 — Gestionnaire de fichiers salariés
+THN V100 — Gestionnaire de fichiers salariés
 
 - Ajout d'un gestionnaire de fichiers dédié aux documents salariés, accessible uniquement en administration.
 - Arborescence : salarié > catégorie > fichiers.
