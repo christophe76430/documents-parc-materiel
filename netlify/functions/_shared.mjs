@@ -64,7 +64,32 @@ export function hasExtinguisher(id){
   if(/^(REM|RRA|RRAT|ANSEMS)/i.test(id) || /\bremorque\b/i.test(m.name)) return false;
   return m.group==='pelles' || /^T\d+$/.test(id);
 }
+let extinguisherMigrationPromise=null;
+export async function ensureExtinguishersAtDec2026(){
+  if(extinguisherMigrationPromise) return extinguisherMigrationPromise;
+  extinguisherMigrationPromise=(async()=>{
+    const markerKey='migration/extincteurs-12-2026-done.json';
+    try{
+      const done=await extinguisherStore().get(markerKey,{type:'json',consistency:'strong'});
+      if(done?.done) return;
+    }catch{}
+    const ids=Object.keys(MACHINES).filter(hasExtinguisher);
+    await Promise.all(ids.map(async id=>{
+      const key=`machine/${id}.json`;
+      let current=null;
+      try{ current=await extinguisherStore().get(key,{type:'json',consistency:'strong'}); }catch{}
+      const expiry='2026-12';
+      if(!current || String(current.expiry||'')!=='2026-12'){
+        await extinguisherStore().set(key,JSON.stringify({id,expiry,updatedAt:new Date().toISOString(),source:'migration-v91'}),{metadata:{id,type:'extinguisher',expiry}});
+      }
+    }));
+    await extinguisherStore().set(markerKey,JSON.stringify({done:true,completedAt:new Date().toISOString(),expiry:'2026-12'}),{metadata:{type:'migration',expiry:'2026-12'}});
+  })().catch(()=>{});
+  return extinguisherMigrationPromise;
+}
+
 export async function getExtinguisherDates(){
+  await ensureExtinguishersAtDec2026();
   const ids=Object.keys(MACHINES).filter(hasExtinguisher);
   const values=await Promise.all(ids.map(async id=>{
     try{
