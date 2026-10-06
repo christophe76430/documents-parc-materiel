@@ -7,6 +7,7 @@ export const DRIVER_STORE = 'parc-chauffeurs';
 export const STATUS_STORE = 'parc-materiel-status';
 export const EXTINGUISHER_STORE = 'parc-extincteurs';
 export const ARCHIVE_STORE = 'parc-documents-archive';
+export const SHARED_DOSSIER_STORE = 'parc-dossiers-clients';
 export const REGION = 'eu-central-1';
 export const TTL = 8 * 60 * 60 * 1000;
 
@@ -57,6 +58,9 @@ export function extinguisherStore(){
 }
 export function archiveStore(){
   return getStore({name:ARCHIVE_STORE,region:REGION,consistency:'strong'});
+}
+export function sharedDossierStore(){
+  return getStore({name:SHARED_DOSSIER_STORE,region:REGION,consistency:'strong'});
 }
 export function hasExtinguisher(id){
   const m=MACHINES[id];
