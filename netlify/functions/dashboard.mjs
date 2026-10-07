@@ -61,6 +61,7 @@ export default async()=>{
     if(!expiry)return null;
     const type=meta.type||typeFromKey;
     if(['carte','barreRouge','divers','doc','devis'].includes(type))return null;
+    if(MACHINES[id].group==='vehicules' && type==='mines') return null;
     const date=new Date(`${expiry}T23:59:59`);
     if(Number.isNaN(date.getTime()))return null;
     const days=Math.ceil((date-new Date())/86400000);

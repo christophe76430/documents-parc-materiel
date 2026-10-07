@@ -93,7 +93,7 @@ function machineSummary(m,enabled,origin){
 function docs(m,items,extDates={}){
   const by={};
   for(const x of items)(by[x.type]??=[]).push(x);
-  const types=[...expectedTypes(m),...Object.keys(by).filter(t=>TYPES[t]&&!expectedTypes(m).includes(t))];
+  const types=[...expectedTypes(m),...Object.keys(by).filter(t=>TYPES[t]&&!expectedTypes(m).includes(t) && !(m.group==='vehicules' && t==='mines'))];
 
   let out=`<div class="status-legend"><span>${dot('ok')} Document valide</span><span>${dot('warn')} Échéance proche</span><span>${dot('bad')} Échéance très proche ou dépassée</span><span>${dot('none')} Document non chargé</span></div><div class="box"><h2>📄 Documents</h2>`;
 
