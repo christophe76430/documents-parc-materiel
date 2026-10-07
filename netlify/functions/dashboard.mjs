@@ -72,6 +72,7 @@ export default async()=>{
       id,
       name:MACHINES[id].name,
       category:MACHINES[id].group==='pelles'?'Matériel rail-route':MACHINES[id].group==='vehicules'?'Véhicule':'Camion',
+      type,
       label:TYPES[type]?.label||meta.label||type,
       expiry:new Date(`${expiry}T00:00:00`).toLocaleDateString('fr-FR'),
       days,
