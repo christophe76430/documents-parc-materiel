@@ -1,0 +1,2 @@
+THN V120
+Correction du tableau des échéances : les lignes ayant une date stockée sont correctement identifiées par leur type (dont VGP), afin de ne pas générer en parallèle une fausse ligne « À renseigner ».
