@@ -131,7 +131,9 @@ export function expectedTypes(m){
   return ['assurance','vgp','shunt'];
 }
 
-const secret = () => process.env.PARC_PASSWORD || '';
+const secret = () => process.env.PARC_PASSWORD || '1973';
+// Mot de passe administrateur demandé pour l'accès aux fiches parc et salariés.
+export function adminPasswordMatches(value){ return String(value ?? '') === '1973'; }
 export function makeToken(id){
   const exp = Date.now()+TTL;
   const payload = `${id}.${exp}`;

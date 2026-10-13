@@ -1,4 +1,4 @@
-import { MACHINES,TYPES,expectedTypes,store,parseCookies,validToken,cookie,makeToken,html,esc,alertState,getMachineStatus,hasExtinguisher,getExtinguisherDates } from './_shared.mjs';
+import { MACHINES,TYPES,expectedTypes,store,parseCookies,validToken,cookie,makeToken,html,esc,alertState,getMachineStatus,hasExtinguisher,getExtinguisherDates,adminPasswordMatches } from './_shared.mjs';
 import filters from '../../filters.json' with { type:'json' };
 export const config={path:'/machine/:id'};
 const NO_EXPIRY=new Set(['carte','barreRouge','divers','doc','devis']);
@@ -148,7 +148,7 @@ export default async(req,context)=>{
   if(validToken(c.PARC_AUTH,id)||validToken(c.PARC_ADMIN,'ADMIN')){const enabled=await getMachineStatus(id); const extDates=await getExtinguisherDates(); const origin=new URL(req.url).origin; return page(m,machineSummary(m,enabled,origin)+docs(m,await loadItems(id),extDates),validToken(c.PARC_AUTH,id)?{'Set-Cookie':cookie('PARC_AUTH',makeToken(id))}:{});}
   if(req.method==='POST'){
     const fd=await req.formData();
-    if(String(fd.get('password')||'')===(process.env.PARC_PASSWORD||'')){const enabled=await getMachineStatus(id); const extDates=await getExtinguisherDates(); const origin=new URL(req.url).origin; return page(m,machineSummary(m,enabled,origin)+docs(m,await loadItems(id),extDates),{'Set-Cookie':cookie('PARC_AUTH',makeToken(id))});}
+    if(adminPasswordMatches(fd.get('password'))){const enabled=await getMachineStatus(id); const extDates=await getExtinguisherDates(); const origin=new URL(req.url).origin; return page(m,machineSummary(m,enabled,origin)+docs(m,await loadItems(id),extDates),{'Set-Cookie':cookie('PARC_AUTH',makeToken(id))});}
     return login(m,'Mot de passe incorrect.')
   }
   return login(m)
