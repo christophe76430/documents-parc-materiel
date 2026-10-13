@@ -1,5 +1,3 @@
-# Installation THN – version V60
+# Installation THN — V126
 
-Déployer le contenu complet du ZIP sur Netlify afin que les fonctions Netlify soient également publiées.
-
-Version V80 : les documents sans échéance n'affichent plus de pastille de statut.
+Déployer le contenu complet du ZIP sur Netlify afin que les pages et les fonctions Netlify soient publiées. Les données existantes hébergées dans Netlify Blobs sont conservées.

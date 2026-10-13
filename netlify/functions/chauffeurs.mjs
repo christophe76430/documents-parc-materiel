@@ -14,7 +14,7 @@ async function employeeHome(drivers){
   // Ne pas télécharger les photos côté serveur : le navigateur les charge en parallèle.
   // Cela accélère fortement l'affichage initial de la liste des salariés.
   const cards=enabled.map((d)=>{
-    const src=`/.netlify/functions/driver-photo?id=${encodeURIComponent(d.id)}&v=${encodeURIComponent(d.photoVersion||'1')}`;
+    const src=`/.netlify/functions/driver-photo?id=${encodeURIComponent(d.id)}&v=${encodeURIComponent((d.photoVersion||(d.photoDisabled?'sans-photo':'1')))}`;
     const initial=esc((d.name||'?').trim().charAt(0).toUpperCase());
     return `<div class="employee-card"><button type="button" class="employee-photo-preview" data-photo="${src}" data-name="${esc(d.name)}" aria-label="Agrandir la photo de ${esc(d.name)}"><span class="employee-avatar"><img src="${src}" alt="Photo de ${esc(d.name)}" onerror="this.style.display='none';this.parentElement.classList.add('avatar-fallback');this.parentElement.textContent='${initial}'"></span></button><a class="employee-card-main" href="/chauffeurs?id=${encodeURIComponent(d.id)}"><strong>${esc(d.name)}</strong><small>Accéder à mon espace</small></a><a class="employee-arrow" href="/chauffeurs?id=${encodeURIComponent(d.id)}" aria-label="Accéder à l’espace de ${esc(d.name)}">→</a></div>`;
   }).join('');
