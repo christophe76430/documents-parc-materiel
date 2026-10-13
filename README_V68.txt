@@ -1,0 +1,1 @@
+V68 — Présentation Espace salariés conforme à la maquette fournie : liste salariés à gauche, échéances globales à droite, filtre salariés, détail des formations/permis/cartes/badges et photos conservées.

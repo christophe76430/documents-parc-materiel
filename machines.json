@@ -1,6 +1,6 @@
 {
   "camions": [
-    ["T01","T01 - EW-610-MD - Man TGS 35.420 8x4 Grue"],["T04","T04 - EB-837-AD - Man TGS 28.440"],["T08","T08 - BE-763-WR - Man TGS 35.400"],["T09","T09 - DY-847-PK - Man TGS 35.440"],["T21","T21 - FJ-210-WY - VOLVO FM (4)"],["T22","T22 - FT-812-DM - VOLVO FM 6x4"],["T23","T23 - GF-353-RM - MERCEDES AROCS"],["T24","T24 - GP-257-GM Mercedes"],
+    ["T01","T01 - EW-610-MD - Man TGS 35.420 8x4 Grue"],["T04","T04 - EB-837-AD - Man TGS 28.440"],["T08","T08 - BE-763-WR - Man TGS 35.400"],["T09","T09 - DY-847-PK - Man TGS 35.440"],["T21","T21 - FJ-210-WY - VOLVO FM 8x4"],["T22","T22 - FT-812-DM - VOLVO FM 6x4"],["T23","T23 - GF-353-RM - MERCEDES AROCS"],["T24","T24 - GP-257-GM Mercedes"],
     ["REM05","REM05 - EW-638-MH - Benne 3 essieux"],["REM06","REM06 - CB-024-NG - Plateau Extensible"],["REM08","REM08 - GQ-842-HQ"],["ANSEMS","REMORQUE ANSSEMS N GK-005-XL"]
   ],
   "pelles": [

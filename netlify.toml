@@ -3,3 +3,35 @@
 
 [functions]
   node_bundler = "esbuild"
+
+# L'accueil administration reste statique : le traitement est fait par la fonction.
+[[redirects]]
+  from = "/admin"
+  to = "/admin.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/admin/*"
+  to = "/admin.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/machine-status"
+  to = "/.netlify/functions/machine-status"
+  status = 200
+  force = true
+
+
+[[redirects]]
+  from = "/driver-files"
+  to = "/.netlify/functions/driver-files"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/gestionnaire-fichiers-salaries"
+  to = "/.netlify/functions/driver-files"
+  status = 200
+  force = true

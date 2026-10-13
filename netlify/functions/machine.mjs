@@ -1,10 +1,10 @@
-import { MACHINES,TYPES,expectedTypes,store,parseCookies,validToken,cookie,makeToken,html,esc,alertState } from './_shared.mjs';
+import { MACHINES,TYPES,expectedTypes,store,parseCookies,validToken,cookie,makeToken,html,esc,alertState,getMachineStatus,hasExtinguisher,getExtinguisherDates,adminPasswordMatches } from './_shared.mjs';
 import filters from '../../filters.json' with { type:'json' };
 export const config={path:'/machine/:id'};
 const NO_EXPIRY=new Set(['carte','barreRouge','divers','doc','devis']);
 
 function page(m,body,headers={}){
-  return html(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(m.name)} — Parc THN</title><link rel="stylesheet" href="/style.css"></head><body><main><p><a href="/">← Accueil</a></p><h1>🏗️ ${esc(m.name)}</h1>${body}</main></body></html>`,200,headers)
+  return html(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(m.name)} — Parc THN</title><link rel="stylesheet" href="/style.css"><style>.machine-qr{display:flex;align-items:center;gap:18px;margin:0 0 16px;padding:16px 18px;background:#fff;border:1px solid #d8e6f4;border-radius:14px;box-shadow:0 2px 8px rgba(15,47,82,.06)}.machine-qr img{width:110px;height:110px;object-fit:contain;flex:none}.machine-qr strong{display:block;color:#0f2f52;font-size:1rem}.machine-qr p{margin:6px 0 0;color:#667b91;line-height:1.45}.machine-qr a{color:#1769d1}@media(max-width:560px){.machine-qr{align-items:flex-start}.machine-qr img{width:92px;height:92px}}@media print{.machine-qr{box-shadow:none}}</style></head><body><main><p><a href="/">← Accueil</a></p><h1>🏗️ ${esc(m.name)}</h1>${body}</main></body></html>`,200,headers)
 }
 
 function login(m,error=''){
@@ -13,15 +13,24 @@ function login(m,error=''){
 
 async function loadItems(id){
   const {blobs}=await store().list({prefix:`${id}/`});
-  return Promise.all(blobs.map(async b=>{
+  const raw=await Promise.all(blobs.map(async b=>{
     const p=b.key.split('/');
-    let type=p[1]||'',label=p.slice(2).join('/')||p[1],expiry='';
+    let type=p[1]||'',label=p.slice(2).join('/')||p[1],expiry='',uploadedAt='';
     const meta=await store().getMetadata(b.key).catch(()=>null);
     type=meta?.metadata?.type||type;
     label=meta?.metadata?.label||label;
     expiry=meta?.metadata?.expiry||'';
-    return {key:b.key,type,label,expiry}
-  }))
+    uploadedAt=meta?.metadata?.uploadedAt||'';
+    return {key:b.key,type,label,expiry,uploadedAt}
+  }));
+  const byType=new Map(),out=[];
+  for(const x of raw){
+    if(NO_EXPIRY.has(x.type)){out.push(x);continue;}
+    const prev=byType.get(x.type);
+    if(!prev || String(x.uploadedAt||'')>String(prev.uploadedAt||'')) byType.set(x.type,x);
+  }
+  out.push(...byType.values());
+  return out;
 }
 
 function dot(state){
@@ -74,10 +83,17 @@ function filterTable(m){
   return `<div class="box"><h2>🔧 Filtration</h2><p class="muted">${esc(data.source_label||m.name)}</p><div style="overflow-x:auto"><table class="filter-table"><thead><tr><th>Fonction</th><th>Référence</th></tr></thead><tbody>${rows}</tbody></table></div>${data.adblue?`<p><b>AdBlue :</b> ${esc(data.adblue)}</p>`:''}${data.note?`<p class="muted"><b>⚠️ Remarque :</b> ${esc(data.note)}</p>`:''}</div>`
 }
 
-function docs(m,items){
+function machineSummary(m,enabled,origin){
+  const showQr=m.group==='pelles';
+  const originHint='QR code de cette fiche';
+  const qr=showQr?`<div class="machine-qr"><img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(`${origin}/machine/${encodeURIComponent(m.id)}`)}" alt="QR code pour ${esc(m.name)}"><div><strong>${originHint}</strong><p>Scannez ce QR code pour ouvrir directement la fiche de cet engin ou de cette remorque.</p></div></div>`:'';
+  return `${qr}<div class="box machine-summary"><div><span class="summary-label">Catégorie</span><strong>${esc(m.group==='pelles'?'Matériel rail-route':m.group==='vehicules'?'Véhicule':'Camion')}</strong></div></div>`;
+}
+
+function docs(m,items,extDates={}){
   const by={};
   for(const x of items)(by[x.type]??=[]).push(x);
-  const types=[...expectedTypes(m),...Object.keys(by).filter(t=>TYPES[t]&&!expectedTypes(m).includes(t))];
+  const types=[...expectedTypes(m),...Object.keys(by).filter(t=>TYPES[t]&&!expectedTypes(m).includes(t) && !(m.group==='vehicules' && t==='mines'))];
 
   let out=`<div class="status-legend"><span>${dot('ok')} Document valide</span><span>${dot('warn')} Échéance proche</span><span>${dot('bad')} Échéance très proche ou dépassée</span><span>${dot('none')} Document non chargé</span></div><div class="box"><h2>📄 Documents</h2>`;
 
@@ -88,7 +104,7 @@ function docs(m,items){
     if(!list.length){
       const hasExpiryType=!NO_EXPIRY.has(t);
       const missingText=hasExpiryType?'Pas de document':'Document non chargé';
-      out+=`<div class="doc-row doc-row-missing">${docIcon(t)}<div class="doc-main">${dot('none')}<span class="${hasExpiryType?'doc-missing-expiry':''}">${esc(missingText)}</span></div></div>`;
+      out+=`<div class="doc-row doc-row-missing">${docIcon(t)}<div class="doc-main">${hasExpiryType?dot('none'):''}<span class="${hasExpiryType?'doc-missing-expiry':''}">${esc(missingText)}</span></div></div>`;
       continue;
     }
 
@@ -109,10 +125,17 @@ function docs(m,items){
           : `<span class="doc-file">${esc(filename)}</span>`;
       out+=`<div class="doc-row">
         ${docIcon(t)}
-        <div class="doc-main">${dot(state)}<div><span class="doc-title">${esc(meta.label)}</span>${detail}</div></div>
+        <div class="doc-main">${hasExpiryType?dot(state):''}<div><span class="doc-title">${esc(meta.label)}</span>${detail}</div></div>
         <a class="doc-consult" href="/document/${encodeURIComponent(m.id)}/${encodeURIComponent(legacy)}/${name}" target="_blank" rel="noopener">👁️ Consulter</a>
       </div>`;
     }
+  }
+
+  if(hasExtinguisher(m.id)) {
+    const ext=String(extDates[m.id]||'');
+    const extLabel=/^(\d{4})-(\d{2})$/.test(ext)?`${ext.slice(5,7)}/${ext.slice(0,4)}`:'Date non renseignée';
+    const extState=extLabel==='Date non renseignée'?'bad':alertState(`${ext}-01`,'extinguisher').state;
+    out+=`<section class="doc-section"><h3>Extincteur</h3><div class="doc-row doc-row-missing">${docIcon('extinguisher')}<div class="doc-main">${dot(extState)}<div><span class="doc-title">Extincteur</span><span class="doc-detail ${extState}">${esc(extLabel)}</span></div></div></div></section>`;
   }
 
   return out+'</div>'+filterTable(m)+'<p class="muted">Accès valable 8 heures sur cet équipement.</p>'
@@ -122,10 +145,10 @@ export default async(req,context)=>{
   const id=String(context.params?.id||'').toUpperCase(),m=MACHINES[id];
   if(!m)return html('<h1>Matériel introuvable</h1>',404);
   const c=parseCookies(req);
-  if(validToken(c.PARC_AUTH,id)||validToken(c.PARC_ADMIN,'ADMIN'))return page(m,docs(m,await loadItems(id)),validToken(c.PARC_AUTH,id)?{'Set-Cookie':cookie('PARC_AUTH',makeToken(id))}:{});
+  if(validToken(c.PARC_AUTH,id)||validToken(c.PARC_ADMIN,'ADMIN')){const enabled=await getMachineStatus(id); const extDates=await getExtinguisherDates(); const origin=new URL(req.url).origin; return page(m,machineSummary(m,enabled,origin)+docs(m,await loadItems(id),extDates),validToken(c.PARC_AUTH,id)?{'Set-Cookie':cookie('PARC_AUTH',makeToken(id))}:{});}
   if(req.method==='POST'){
     const fd=await req.formData();
-    if(String(fd.get('password')||'')===(process.env.PARC_PASSWORD||''))return page(m,docs(m,await loadItems(id)),{'Set-Cookie':cookie('PARC_AUTH',makeToken(id))});
+    if(adminPasswordMatches(fd.get('password'))){const enabled=await getMachineStatus(id); const extDates=await getExtinguisherDates(); const origin=new URL(req.url).origin; return page(m,machineSummary(m,enabled,origin)+docs(m,await loadItems(id),extDates),{'Set-Cookie':cookie('PARC_AUTH',makeToken(id))});}
     return login(m,'Mot de passe incorrect.')
   }
   return login(m)

@@ -4,6 +4,10 @@ import machines from '../../machines.json' with { type: 'json' };
 
 export const STORE = 'parc-documents';
 export const DRIVER_STORE = 'parc-chauffeurs';
+export const STATUS_STORE = 'parc-materiel-status';
+export const EXTINGUISHER_STORE = 'parc-extincteurs';
+export const ARCHIVE_STORE = 'parc-documents-archive';
+export const SHARED_DOSSIER_STORE = 'parc-dossiers-clients';
 export const REGION = 'eu-central-1';
 export const TTL = 8 * 60 * 60 * 1000;
 
@@ -31,8 +35,12 @@ export const TYPES = {
 };
 
 export const DRIVER_CATEGORIES = {
-  identite:{label:'Identité',icon:'👤'},
-  formation:{label:'Formation',icon:'🎓'},
+  identite:{label:'Identité & administratif',icon:'👤'},
+  permis:{label:'Permis & autorisations',icon:'🚗'},
+  formation:{label:'Formations & habilitations',icon:'🎓'},
+  acces:{label:'Accès & badges',icon:'🪪'},
+  diplomes:{label:'Diplômes & qualifications',icon:'📜'},
+  sante:{label:'Santé & aptitude',icon:'🩺'},
   divers:{label:'Divers',icon:'📂'}
 };
 
@@ -42,6 +50,77 @@ export function store(){
 export function driverStore(){
   return getStore({name:DRIVER_STORE,region:REGION,consistency:'strong'});
 }
+export function statusStore(){
+  return getStore({name:STATUS_STORE,region:REGION,consistency:'strong'});
+}
+export function extinguisherStore(){
+  return getStore({name:EXTINGUISHER_STORE,region:REGION,consistency:'strong'});
+}
+export function archiveStore(){
+  return getStore({name:ARCHIVE_STORE,region:REGION,consistency:'strong'});
+}
+export function sharedDossierStore(){
+  return getStore({name:SHARED_DOSSIER_STORE,region:REGION,consistency:'strong'});
+}
+export function hasExtinguisher(id){
+  const m=MACHINES[id];
+  if(!m) return false;
+  if(/^(REM|RRA|RRAT|ANSEMS)/i.test(id) || /\bremorque\b/i.test(m.name)) return false;
+  return m.group==='pelles' || /^T\d+$/.test(id);
+}
+let extinguisherMigrationPromise=null;
+export async function ensureExtinguishersAtDec2026(){
+  if(extinguisherMigrationPromise) return extinguisherMigrationPromise;
+  extinguisherMigrationPromise=(async()=>{
+    const markerKey='migration/extincteurs-12-2026-done.json';
+    try{
+      const done=await extinguisherStore().get(markerKey,{type:'json',consistency:'strong'});
+      if(done?.done) return;
+    }catch{}
+    const ids=Object.keys(MACHINES).filter(hasExtinguisher);
+    await Promise.all(ids.map(async id=>{
+      const key=`machine/${id}.json`;
+      let current=null;
+      try{ current=await extinguisherStore().get(key,{type:'json',consistency:'strong'}); }catch{}
+      const expiry='2026-12';
+      if(!current || String(current.expiry||'')!=='2026-12'){
+        await extinguisherStore().set(key,JSON.stringify({id,expiry,updatedAt:new Date().toISOString(),source:'migration-v91'}),{metadata:{id,type:'extinguisher',expiry}});
+      }
+    }));
+    await extinguisherStore().set(markerKey,JSON.stringify({done:true,completedAt:new Date().toISOString(),expiry:'2026-12'}),{metadata:{type:'migration',expiry:'2026-12'}});
+  })().catch(()=>{});
+  return extinguisherMigrationPromise;
+}
+
+export async function getExtinguisherDates(){
+  await ensureExtinguishersAtDec2026();
+  const ids=Object.keys(MACHINES).filter(hasExtinguisher);
+  const values=await Promise.all(ids.map(async id=>{
+    try{
+      const r=await extinguisherStore().get(`machine/${id}.json`,{type:'json',consistency:'strong'});
+      return r?.expiry ? [id,String(r.expiry)] : null;
+    }catch{return null;}
+  }));
+  return Object.fromEntries(values.filter(Boolean));
+}
+export async function getMachineStatus(id){
+  const key=`machine/${id}.json`;
+  try{
+    const r=await statusStore().get(key,{type:'json',consistency:'strong'});
+    return r && r.enabled!==false;
+  }catch{return true;}
+}
+export async function getMachineStatuses(){
+  const out={};
+  await Promise.all(Object.keys(MACHINES).map(async id=>{
+    try{
+      const r=await statusStore().get(`machine/${id}.json`,{type:'json',consistency:'strong'});
+      out[id]=r?.enabled!==false;
+    }catch{out[id]=true;}
+  }));
+  return out;
+}
+
 
 export function expectedTypes(m){
   if(!m) return [];
@@ -52,7 +131,9 @@ export function expectedTypes(m){
   return ['assurance','vgp','shunt'];
 }
 
-const secret = () => process.env.PARC_PASSWORD || '76430';
+const secret = () => process.env.PARC_PASSWORD || '1973';
+// Mot de passe administrateur demandé pour l'accès aux fiches parc et salariés.
+export function adminPasswordMatches(value){ return String(value ?? '') === '1973'; }
 export function makeToken(id){
   const exp = Date.now()+TTL;
   const payload = `${id}.${exp}`;
