@@ -7,7 +7,8 @@ import {
   makeToken,
   TTL,
   html,
-  esc
+  esc,
+  adminPasswordMatches
 } from './_shared.mjs';
 
 export const config = { path: '/admin-documents' };
@@ -208,7 +209,7 @@ export default async req => {
     if (action === 'login') {
       const password = String(fd.get('password') || '');
 
-      if (password !== (process.env.PARC_PASSWORD || '')) {
+      if (!adminPasswordMatches(password)) {
         return html(
           page(`
             <p class="bad">Mot de passe incorrect.</p>

@@ -7,6 +7,7 @@ export const DRIVER_STORE = 'parc-chauffeurs';
 export const STATUS_STORE = 'parc-materiel-status';
 export const EXTINGUISHER_STORE = 'parc-extincteurs';
 export const ARCHIVE_STORE = 'parc-documents-archive';
+export const SHARED_DOSSIER_STORE = 'parc-dossiers-clients';
 export const REGION = 'eu-central-1';
 export const TTL = 8 * 60 * 60 * 1000;
 
@@ -34,8 +35,12 @@ export const TYPES = {
 };
 
 export const DRIVER_CATEGORIES = {
-  identite:{label:'Identité',icon:'👤'},
-  formation:{label:'Formation',icon:'🎓'},
+  identite:{label:'Identité & administratif',icon:'👤'},
+  permis:{label:'Permis & autorisations',icon:'🚗'},
+  formation:{label:'Formations & habilitations',icon:'🎓'},
+  acces:{label:'Accès & badges',icon:'🪪'},
+  diplomes:{label:'Diplômes & qualifications',icon:'📜'},
+  sante:{label:'Santé & aptitude',icon:'🩺'},
   divers:{label:'Divers',icon:'📂'}
 };
 
@@ -54,8 +59,41 @@ export function extinguisherStore(){
 export function archiveStore(){
   return getStore({name:ARCHIVE_STORE,region:REGION,consistency:'strong'});
 }
-export function hasExtinguisher(id){ return !!MACHINES[id] && (MACHINES[id].group==='pelles' || /^T\d+$/.test(id)); }
+export function sharedDossierStore(){
+  return getStore({name:SHARED_DOSSIER_STORE,region:REGION,consistency:'strong'});
+}
+export function hasExtinguisher(id){
+  const m=MACHINES[id];
+  if(!m) return false;
+  if(/^(REM|RRA|RRAT|ANSEMS)/i.test(id) || /\bremorque\b/i.test(m.name)) return false;
+  return m.group==='pelles' || /^T\d+$/.test(id);
+}
+let extinguisherMigrationPromise=null;
+export async function ensureExtinguishersAtDec2026(){
+  if(extinguisherMigrationPromise) return extinguisherMigrationPromise;
+  extinguisherMigrationPromise=(async()=>{
+    const markerKey='migration/extincteurs-12-2026-done.json';
+    try{
+      const done=await extinguisherStore().get(markerKey,{type:'json',consistency:'strong'});
+      if(done?.done) return;
+    }catch{}
+    const ids=Object.keys(MACHINES).filter(hasExtinguisher);
+    await Promise.all(ids.map(async id=>{
+      const key=`machine/${id}.json`;
+      let current=null;
+      try{ current=await extinguisherStore().get(key,{type:'json',consistency:'strong'}); }catch{}
+      const expiry='2026-12';
+      if(!current || String(current.expiry||'')!=='2026-12'){
+        await extinguisherStore().set(key,JSON.stringify({id,expiry,updatedAt:new Date().toISOString(),source:'migration-v91'}),{metadata:{id,type:'extinguisher',expiry}});
+      }
+    }));
+    await extinguisherStore().set(markerKey,JSON.stringify({done:true,completedAt:new Date().toISOString(),expiry:'2026-12'}),{metadata:{type:'migration',expiry:'2026-12'}});
+  })().catch(()=>{});
+  return extinguisherMigrationPromise;
+}
+
 export async function getExtinguisherDates(){
+  await ensureExtinguishersAtDec2026();
   const ids=Object.keys(MACHINES).filter(hasExtinguisher);
   const values=await Promise.all(ids.map(async id=>{
     try{
@@ -93,7 +131,9 @@ export function expectedTypes(m){
   return ['assurance','vgp','shunt'];
 }
 
-const secret = () => process.env.PARC_PASSWORD || '';
+const secret = () => process.env.PARC_PASSWORD || '1973';
+// Mot de passe administrateur demandé pour l'accès aux fiches parc et salariés.
+export function adminPasswordMatches(value){ return String(value ?? '') === '1973'; }
 export function makeToken(id){
   const exp = Date.now()+TTL;
   const payload = `${id}.${exp}`;
