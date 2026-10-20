@@ -179,8 +179,11 @@ export function expectedTypes(m){
 }
 
 const secret = () => process.env.PARC_PASSWORD || '';
-// Mot de passe administrateur demandé pour l'accès aux fiches parc et salariés.
+// Mot de passe administrateur : variable Netlify PARC_PASSWORD.
 export function adminPasswordMatches(value){ const expected = process.env.PARC_PASSWORD || ''; return Boolean(expected) && String(value ?? '') === expected; }
+// Mot de passe distinct pour consulter les fiches des engins, camions et véhicules.
+// Définir MACHINE_PASSWORD dans les variables d'environnement Netlify.
+export function machineAccessPasswordMatches(value){ const expected = process.env.MACHINE_PASSWORD || ''; return Boolean(expected) && String(value ?? '') === expected; }
 export function makeToken(id){
   const exp = Date.now()+TTL;
   const payload = `${id}.${exp}`;
