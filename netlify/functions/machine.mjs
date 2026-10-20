@@ -1,4 +1,4 @@
-import { MACHINES,TYPES,expectedTypes,store,parseCookies,validToken,cookie,makeToken,html,esc,alertState,getMachineStatus,hasExtinguisher,getExtinguisherDates,adminPasswordMatches } from './_shared.mjs';
+import { MACHINES,TYPES,expectedTypes,store,parseCookies,validToken,cookie,makeToken,html,esc,alertState,getMachineStatus,hasExtinguisher,getExtinguisherDates,adminPasswordMatches,VGP_EXEMPT_MACHINES } from './_shared.mjs';
 import filters from '../../filters.json' with { type:'json' };
 export const config={path:'/machine/:id'};
 const NO_EXPIRY=new Set(['carte','barreRouge','divers','doc','devis']);
@@ -93,7 +93,7 @@ function machineSummary(m,enabled,origin){
 function docs(m,items,extDates={}){
   const by={};
   for(const x of items)(by[x.type]??=[]).push(x);
-  const types=[...expectedTypes(m),...Object.keys(by).filter(t=>TYPES[t]&&!expectedTypes(m).includes(t) && !(m.group==='vehicules' && t==='mines'))];
+  const types=[...expectedTypes(m),...Object.keys(by).filter(t=>TYPES[t]&&!expectedTypes(m).includes(t) && !(m.group==='vehicules' && t==='mines') && !(t==='vgp'&&VGP_EXEMPT_MACHINES.has(m.id)))];
 
   let out=`<div class="status-legend"><span>${dot('ok')} Document valide</span><span>${dot('warn')} Échéance proche</span><span>${dot('bad')} Échéance très proche ou dépassée</span><span>${dot('none')} Document non chargé</span></div><div class="box"><h2>📄 Documents</h2>`;
 

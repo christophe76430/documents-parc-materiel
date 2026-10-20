@@ -20,6 +20,9 @@ export function allMachines(){
 }
 export const MACHINES = allMachines();
 
+// These vehicles and trailers do not require VGP tracking in the THN fleet.
+export const VGP_EXEMPT_MACHINES = new Set(['T08','T09','T24','REM05','REM06','REM08']);
+
 export const TYPES = {
   assurance:{label:'Assurance',alertDays:30},
   vgp:{label:'VGP',alertDays:30},
@@ -168,7 +171,7 @@ export async function getMachineStatuses(){
 
 export function expectedTypes(m){
   if(!m) return [];
-  if(m.group==='camions') return ['carte','assurance','mines','vgp','barreRouge'];
+  if(m.group==='camions') return ['carte','assurance','mines',...(VGP_EXEMPT_MACHINES.has(m.id)?[]:['vgp']),'barreRouge'];
   if(m.group==='vehicules') return ['carte','assurance','ct'];
   if(['P16','P17','P18','P19','P20','P21','P24','P25'].includes(m.id)) return ['assurance','vgp','shunt','agrement'];
   if(['RRA319','RRA034','RRA035','RRA318','RRAT064','RRAT089'].includes(m.id)) return ['agrement'];

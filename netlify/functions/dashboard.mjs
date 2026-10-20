@@ -1,4 +1,4 @@
-import {MACHINES,TYPES,store,status,json,getMachineStatuses,getExtinguisherDates,hasExtinguisher,expectedTypes} from './_shared.mjs';
+import {MACHINES,TYPES,store,status,json,getMachineStatuses,getExtinguisherDates,hasExtinguisher,expectedTypes,VGP_EXEMPT_MACHINES} from './_shared.mjs';
 export const config={path:'/api/dashboard'};
 
 function parseExpiryFromFilename(filename){
@@ -44,6 +44,7 @@ export default async()=>{
     const p=b.key.split('/');
     const id=p[0];
     const type=meta.type||p[1]||'';
+    if(type==='vgp'&&VGP_EXEMPT_MACHINES.has(id)) continue;
     if(['carte','barreRouge','divers','doc','devis'].includes(type)) continue;
     const k=`${id}::${type}`;
     const prev=latestExpiry.get(k);
