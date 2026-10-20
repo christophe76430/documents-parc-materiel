@@ -51,11 +51,13 @@ export default async(req,context)=>{
     if(!found) return html('<h1>Document introuvable</h1><p>Le fichier demandé n\'a pas été trouvé dans le stockage.</p>',404);
 
     const safe=found.name;
+    const download=new URL(req.url).searchParams.get('download')==='1';
+    const disposition=download?'attachment':'inline';
     const lower=safe.toLowerCase();
     const mime=lower.endsWith('.pdf')?'application/pdf':lower.match(/\.(jpe?g)$/)?'image/jpeg':lower.endsWith('.png')?'image/png':'application/octet-stream';
     return new Response(found.data,{headers:{
       'Content-Type':mime,
-      'Content-Disposition':`inline; filename="${safe.replace(/"/g,'')}"`
+      'Content-Disposition':`${disposition}; filename="${safe.replace(/["\r\n]/g,'')}"`
     }});
   }catch(e){
     console.error('DOCUMENT ERROR',e);

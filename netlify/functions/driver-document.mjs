@@ -11,5 +11,7 @@ export default async(req,context)=>{
   const data=await driverStore().get(key,{type:'arrayBuffer'});
   if(!data)return html('<h1>Document introuvable</h1>',404);
   const meta=await driverStore().getMetadata(key).catch(()=>null);
-  return new Response(data,{headers:{'Content-Type':meta?.metadata?.contentType||'application/pdf','Content-Disposition':`inline; filename="${safe.replace(/"/g,'')}"`}});
+  const download=new URL(req.url).searchParams.get('download')==='1';
+  const disposition=download?'attachment':'inline';
+  return new Response(data,{headers:{'Content-Type':meta?.metadata?.contentType||'application/pdf','Content-Disposition':`${disposition}; filename="${safe.replace(/["\r\n]/g,'')}"`}});
 };

@@ -117,6 +117,10 @@ function documentsPage(docs, message = '') {
       TYPES[d.type]?.label ||
       d.type ||
       'Document';
+    const keyParts = String(d.key || '').split('/');
+    const routeType = keyParts.length === 2 ? 'legacy' : (d.type || keyParts[1] || 'legacy');
+    const routeName = keyParts[keyParts.length - 1] || d.name || d.label;
+    const documentUrl = `/document/${encodeURIComponent(d.id)}/${encodeURIComponent(routeType)}/${encodeURIComponent(routeName)}`;
 
     return `
       <div
@@ -130,12 +134,10 @@ function documentsPage(docs, message = '') {
         <br>
         <span class="muted">${esc(typeLabel)}</span>
         <br>
-        <a
-          href="/document/${encodeURIComponent(d.id)}/${encodeURIComponent(d.type || 'legacy')}/${encodeURIComponent(d.label)}"
-          target="_blank"
-        >
-          ${esc(d.label)}
-        </a>
+        <div class="doc-document-actions" style="margin-top:6px">
+          <a href="${documentUrl}" target="_blank" rel="noopener">👁️ Consulter</a>
+          <a class="doc-download-icon" href="${documentUrl}?download=1" title="Télécharger le document" aria-label="Télécharger ${esc(d.label)}">⬇</a>
+        </div>
 
         <form
           method="post"

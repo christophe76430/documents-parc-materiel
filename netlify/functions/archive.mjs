@@ -10,5 +10,6 @@ export default async req=>{
   const name=key.split('/').pop().replace(/^\d+_/,'').replace(/"/g,'');
   const lower=name.toLowerCase();
   const mime=lower.endsWith('.pdf')?'application/pdf':lower.match(/\.(jpe?g)$/)?'image/jpeg':lower.endsWith('.png')?'image/png':'application/octet-stream';
-  return new Response(data,{headers:{'Content-Type':mime,'Content-Disposition':`inline; filename="${name}"`}});
+  const download=new URL(req.url).searchParams.get('download')==='1';
+  return new Response(data,{headers:{'Content-Type':mime,'Content-Disposition':`${download?'attachment':'inline'}; filename="${name.replace(/[\r\n]/g,'')}"`}});
 };

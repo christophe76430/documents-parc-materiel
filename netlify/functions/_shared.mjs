@@ -50,6 +50,50 @@ export function store(){
 export function driverStore(){
   return getStore({name:DRIVER_STORE,region:REGION,consistency:'strong'});
 }
+
+/** Format staff names with the family name in uppercase. Supports both
+ * first-name-first entries (Jean DEMARE) and imported family-name-first
+ * entries (GRECO Bruno), including multi-word family names. */
+export function normalizeDriverName(value){
+  const name=String(value??'').trim().replace(/\s+/g,' ');
+  if(!name) return '';
+  const upper=s=>String(s).toLocaleUpperCase('fr-FR');
+  const givenNames=new Set(`JEAN JEAN-LUC JEAN-PIERRE JEAN-PAUL JEAN-MARC JEAN-CLAUDE JEAN-LOUIS JEAN-FRANCOIS JEAN-YVES JEAN-MICHEL JEAN-BAPTISTE JEAN-MARIE PIERRE PIERRE-YVES PIERRE-ANTOINE PAUL JACQUES MICHEL ANDRE PHILIPPE ALAIN BERNARD NICOLAS CHRISTOPHE BRUNO THIERRY PATRICK DAVID JULIEN ERIC LAURENT STEPHANE FREDERIC OLIVIER SEBASTIEN PASCAL VINCENT JEROME FABRICE DIDIER CHRISTIAN DANIEL MARC FRANCOIS THOMAS ALEXANDRE ANTHONY KEVIN LOIC EMMANUEL MATHIEU ROMAIN ARNAUD SYLVAIN BENOIT BENJAMIN FLORIAN CYRIL CLAUDE DENIS RICHARD GUILLAUME MAXIME REMI REMY YANNICK YANN HERVE SERGE REGIS RENE ROBERT PATRICE GERARD LUC MICKAEL MICHAEL SAMUEL ADRIEN GREGORY GWENAEL GAEL LUDOVIC XAVIER NOEL CEDRIC CLEMENT DAMIEN STEVEN ANTOINE QUENTIN MORGAN THEO THEOPHILE MATHIS LIONEL HUGO LUCAS TIMOTHEE TIMOTHE TOM ANNE MARIE SOPHIE ISABELLE NATHALIE SYLVIE CATHERINE SANDRINE VALERIE VERONIQUE FLORENCE CLAIRE CELINE AUDREY EMILIE MELANIE CAROLINE LAURENCE CHRISTINE PATRICIA MARTINE CORINNE FRANCOISE CHANTAL MONIQUE BRIGITTE JACQUELINE ALINE JULIE LUCIE CAMILLE SARAH EMMA LAURA LEA MANON ANAIS PAULINE MARION ELODIE ANGELIQUE KARINE VIRGINIE DELPHINE AMELIE HELENE MARIE-CLAIRE MARIE-CHRISTINE MARIE-PIERRE MARIE-LAURE`.split(' '));
+  const isGiven=token=>{
+    const cleaned=upper(String(token).replace(/[.,]/g,'')).normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    return givenNames.has(cleaned) || cleaned.split('-').every(part=>givenNames.has(part));
+  };
+  const isUpperToken=token=>{
+    const letters=String(token).match(/\p{L}/gu)||[];
+    return letters.length>0 && letters.join('')===upper(letters.join(''));
+  };
+  if(name.includes(',')){
+    const comma=name.indexOf(',');
+    const surname=name.slice(0,comma).trim();
+    const given=name.slice(comma+1).trim();
+    return given ? `${upper(surname)}, ${given}` : upper(surname);
+  }
+  const parts=name.split(' ');
+  if(parts.length===1) return upper(parts[0]);
+  // Conventional order: "Prénom NOM", including compound surnames.
+  if(isGiven(parts[0])){
+    let end=1;
+    while(end<parts.length-1 && isGiven(parts[end])) end++;
+    return `${parts.slice(0,end).join(' ')} ${upper(parts.slice(end).join(' '))}`;
+  }
+  // Imports can also be written "NOM Prénom".
+  let givenStart=parts.length;
+  while(givenStart>0 && isGiven(parts[givenStart-1])) givenStart--;
+  if(givenStart>0 && givenStart<parts.length){
+    return `${upper(parts.slice(0,givenStart).join(' '))} ${parts.slice(givenStart).join(' ')}`;
+  }
+  if(isUpperToken(parts[0])){
+    let end=1;
+    while(end<parts.length-1 && isUpperToken(parts[end])) end++;
+    return [...parts.slice(0,end).map(upper),...parts.slice(end)].join(' ');
+  }
+  return `${parts[0]} ${upper(parts.slice(1).join(' '))}`;
+}
 export function statusStore(){
   return getStore({name:STATUS_STORE,region:REGION,consistency:'strong'});
 }
