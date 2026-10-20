@@ -84,9 +84,10 @@ function filterTable(m){
 }
 
 function machineSummary(m,enabled,origin){
-  const showQr=m.group==='pelles';
+  // Afficher le QR code sur les fiches des camions ainsi que sur les engins/remorques rail-route.
+  const showQr=m.group==='pelles'||m.group==='camions';
   const originHint='QR code de cette fiche';
-  const qr=showQr?`<div class="machine-qr"><img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(`${origin}/machine/${encodeURIComponent(m.id)}`)}" alt="QR code pour ${esc(m.name)}"><div><strong>${originHint}</strong><p>Scannez ce QR code pour ouvrir directement la fiche de cet engin ou de cette remorque.</p></div></div>`:'';
+  const qr=showQr?`<div class="machine-qr"><img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(`${origin}/machine/${encodeURIComponent(m.id)}`)}" alt="QR code pour ${esc(m.name)}"><div><strong>${originHint}</strong><p>Scannez ce QR code pour ouvrir directement la fiche de ce camion, de cet engin ou de cette remorque.</p></div></div>`:'';
   return `${qr}<div class="box machine-summary"><div><span class="summary-label">Catégorie</span><strong>${esc(m.group==='pelles'?'Matériel rail-route':m.group==='vehicules'?'Véhicule':'Camion')}</strong></div></div>`;
 }
 
