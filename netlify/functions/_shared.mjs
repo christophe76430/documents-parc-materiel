@@ -178,9 +178,9 @@ export function expectedTypes(m){
   return ['assurance','vgp','shunt'];
 }
 
-const secret = () => process.env.PARC_PASSWORD || '1973';
+const secret = () => process.env.PARC_PASSWORD || '';
 // Mot de passe administrateur demandé pour l'accès aux fiches parc et salariés.
-export function adminPasswordMatches(value){ return String(value ?? '') === '76430'; }
+export function adminPasswordMatches(value){ const expected = process.env.PARC_PASSWORD || ''; return Boolean(expected) && String(value ?? '') === expected; }
 export function makeToken(id){
   const exp = Date.now()+TTL;
   const payload = `${id}.${exp}`;

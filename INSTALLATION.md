@@ -1,1 +1,1 @@
-THN V137 — Changement du mot de passe administrateur de 1973 à 76430. Le code commun des salariés 131273 est conservé. Déployer l’intégralité du contenu de cette archive sur Netlify.
+THN V138 — Le mot de passe administrateur doit être défini dans la variable d’environnement PARC_PASSWORD de Netlify. Ne pas inscrire sa valeur dans le code source ou dans les fichiers du dépôt. Le code commun des salariés reste inchangé.
