@@ -6,7 +6,7 @@ function login(error='', selectedId=''){
   const selected = selectedId ? drivers.find(x=>x.id===selectedId && x.enabled!==false) : null;
   const target = selected ? `<input type="hidden" name="driverId" value="${esc(selected.id)}">` : '';
   const title = selected ? `👷 Accès à l’espace de ${esc(selected.name)}` : '👷 Espace salariés';
-  const intro = selected ? 'Entrez votre date d’anniversaire ou votre code d’accès pour ouvrir votre profil.' : 'Sélectionnez votre profil puis entrez votre code personnel.';
+  const intro = selected ? 'Code d’accès' : 'Sélectionnez votre profil puis entrez votre code personnel.';
   return html(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Espace salariés — THN</title><link rel="stylesheet" href="/style.css"></head><body><main><div class="box driver-login">${selected?`<p><a href="/chauffeurs">← Retour à la liste des salariés</a></p>`:''}<h1>${title}</h1><p>${intro}</p>${error?`<p class="bad">${esc(error)}</p>`:''}<form method="post">${target}<input name="code" type="password" required autocomplete="current-password" aria-label="Code d’accès"><button>Accéder à mon espace</button></form><p><a href="/">← Accueil</a></p></div></main></body></html>`)
 }
 async function employeeHome(drivers){
