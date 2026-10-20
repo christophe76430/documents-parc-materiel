@@ -136,7 +136,7 @@ function documentsPage(docs, message = '') {
         <br>
         <div class="doc-document-actions" style="margin-top:6px">
           <a href="${documentUrl}" target="_blank" rel="noopener">👁️ Consulter</a>
-          <a class="doc-download-icon" href="${documentUrl}?download=1" title="Télécharger le document" aria-label="Télécharger ${esc(d.label)}">⬇</a>
+          <a class="doc-download-icon" href="${documentUrl}?download=1" title="Télécharger le document" aria-label="Télécharger ${esc(d.label)}">💾</a>
         </div>
 
         <form

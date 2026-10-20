@@ -126,7 +126,7 @@ function docs(m,items,extDates={}){
       out+=`<div class="doc-row">
         ${docIcon(t)}
         <div class="doc-main">${hasExpiryType?dot(state):''}<div><span class="doc-title">${esc(meta.label)}</span>${detail}</div></div>
-        <div class="doc-document-actions"><a class="doc-consult" href="/document/${encodeURIComponent(m.id)}/${encodeURIComponent(legacy)}/${name}" target="_blank" rel="noopener">👁️ Consulter</a><a class="doc-download-icon" href="/document/${encodeURIComponent(m.id)}/${encodeURIComponent(legacy)}/${name}?download=1" title="Télécharger le document" aria-label="Télécharger ${esc(filename)}">⬇</a></div>
+        <div class="doc-document-actions"><a class="doc-consult" href="/document/${encodeURIComponent(m.id)}/${encodeURIComponent(legacy)}/${name}" target="_blank" rel="noopener">👁️ Consulter</a><a class="doc-download-icon" href="/document/${encodeURIComponent(m.id)}/${encodeURIComponent(legacy)}/${name}?download=1" title="Télécharger le document" aria-label="Télécharger ${esc(filename)}">💾</a></div>
       </div>`;
     }
   }
