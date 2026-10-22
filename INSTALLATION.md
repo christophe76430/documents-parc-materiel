@@ -1,3 +1,5 @@
-THN V139 — Mots de passe séparés.
+THN V140 — QR codes individuels pour les salariés.
 
-Dans Netlify > Project configuration > Environment variables, conserver PARC_PASSWORD pour l'administration et définir une variable MACHINE_PASSWORD pour l'accès aux fiches des engins, camions et véhicules. Saisir les valeurs de ces deux mots de passe uniquement dans Netlify, jamais dans le code source ou les fichiers du dépôt. Enregistrer les variables avant le déploiement.
+La liste QR codes de l’administration contient désormais une section Espaces salariés. Chaque QR code ouvre le profil salarié correspondant à l’adresse du site courant. Le code d’accès reste requis : le QR code ne contourne pas l’authentification. Les QR codes du matériel sont conservés.
+
+Après remplacement des fichiers sur la branche de production, Netlify doit publier le site pour activer cette modification.
