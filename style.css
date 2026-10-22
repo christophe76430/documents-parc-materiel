@@ -340,3 +340,33 @@ main:not(.home-main):not(.category-main){max-width:1100px;margin:38px auto;paddi
 .category-card.rental .rental-share{font-size:36px;color:#1559a3;text-align:center}
 .category-card.rental .rental-share svg{width:42px;height:42px}
 .category-card.rental .category-content h2{font-size:21px}
+
+
+/* V141 — QR code sur le profil salarié et tableaux d'échéances lisibles sur smartphone */
+.employee-profile-qr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;margin:0 0 18px;border:1px solid #d8e6f4;background:#fff}
+.employee-profile-qr h2{margin:0 0 7px;color:#123e73}
+.employee-profile-qr p{margin:0 0 12px;color:#5c7590;line-height:1.5}
+.employee-profile-qr img{width:160px;height:160px;object-fit:contain;display:block}
+.employee-profile-qr button{border:1px solid #bcd2e7;border-radius:8px;background:#f7fbff;color:#15598f;padding:9px 12px;font-weight:700;cursor:pointer}
+@media(max-width:650px){
+  .employee-profile-qr{grid-template-columns:minmax(0,1fr);padding:16px!important}
+  .employee-profile-qr img{width:148px;height:148px;justify-self:center}
+  .deadline-fixed-head{display:none!important}
+  .deadline-scroll-body,.employee-overview-grid .deadline-scroll-body,.employee-all-deadlines .deadline-scroll-body,.employee-deadlines .deadline-scroll-body{height:auto!important;max-height:65vh;overflow-y:auto!important;overflow-x:hidden!important}
+  .deadline-scroll-body table,.employee-overview-grid .deadline-fixed-head table,.employee-overview-grid .deadline-scroll-body table{display:block;width:100%!important;min-width:0!important;border-collapse:separate;border-spacing:0}
+  .deadline-scroll-body table tbody{display:block;width:100%}
+  .deadline-scroll-body table tr{display:block;width:100%;margin:0 0 12px;border:1px solid #d8e6f4;border-radius:10px;overflow:hidden;background:#fff;box-shadow:0 2px 7px rgba(17,54,92,.04)}
+  .deadline-scroll-body table td{display:grid;grid-template-columns:minmax(92px,38%) minmax(0,1fr);gap:8px;align-items:start;width:100%!important;padding:9px 10px!important;border-bottom:1px solid #edf1f5;font-size:12px!important;white-space:normal;overflow-wrap:anywhere;word-break:normal;box-sizing:border-box}
+  .deadline-scroll-body table td:last-child{border-bottom:0}
+  .deadline-scroll-body table td::before{content:attr(data-label);font-size:11px;font-weight:800;color:#627b94;line-height:1.35}
+  .deadline-scroll-body table td .table-status{white-space:normal;display:inline-flex;align-items:flex-start;gap:5px;line-height:1.35}
+  .deadline-scroll-body table td .table-status .dot{margin-top:3px;flex:none}
+  .employee-overview-grid .employee-all-deadlines{padding:13px!important}
+  .employee-overview-grid .deadlines-head h2{font-size:21px!important}
+  .employee-overview-grid .deadline-scroll-body table td{font-size:12px!important}
+  .deadline-tools{width:100%;gap:7px}
+  .deadline-tools select{flex:1;min-width:0!important;width:100%}
+  .deadline-tools button{flex:none}
+  .deadlines-head p{font-size:13px;line-height:1.4}
+}
+@media print{.employee-profile-qr button{display:none}}
