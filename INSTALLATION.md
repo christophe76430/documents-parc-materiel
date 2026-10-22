@@ -1,5 +1,5 @@
-THN V140 — QR codes individuels pour les salariés.
+THN V142 — simplification des QR codes salariés dans la liste imprimable.
 
-La liste QR codes de l’administration contient désormais une section Espaces salariés. Chaque QR code ouvre le profil salarié correspondant à l’adresse du site courant. Le code d’accès reste requis : le QR code ne contourne pas l’authentification. Les QR codes du matériel sont conservés.
+Le modèle HTML des QR codes salariés ne contient plus la phrase « Espace salarié — le code d’accès habituel reste requis. » ni l’URL textuelle sous le QR code. Le nom du salarié et le QR code restent visibles. Les QR codes du matériel ne sont pas modifiés.
 
-Après remplacement des fichiers sur la branche de production, Netlify doit publier le site pour activer cette modification.
+Déployer le contenu complet du ZIP sur la branche Netlify de production utilisée pour THN.
